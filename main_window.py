@@ -15,7 +15,6 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-
         self.data_loader_dock = DataLoaderDock(self)
         self.addDockWidget(Qt.LeftDockWidgetArea, self.data_loader_dock)
 
