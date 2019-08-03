@@ -4,7 +4,7 @@ from PyQt5 import QtCore, QtGui
 class DatasetModel(QtGui.QStandardItemModel):
     def __init__(self, data, parent=None):
         QtGui.QStandardItemModel.__init__(self, parent)
-        self._data = data._df
+        self._data = data.data_frame()
         for row in self._data.values.tolist():
             data_row = [QtGui.QStandardItem("{0:.2f}".format(x)) for x in row]
             self.appendRow(data_row)
