@@ -1,9 +1,9 @@
 import numpy as np
 import pandas as pd
-from PyQt5.QtWidgets import QListWidgetItem, QTableView
+from PyQt5.QtWidgets import QTableView
 
 from dataset import Dataset
-from gui.dataset_model import DatasetModel
+from dataset_model import DatasetModel
 from gui.plot_window import PlotWindow
 
 import matplotlib.pyplot as plt
@@ -30,7 +30,7 @@ class PlotGenerator:
                 hist1 = plot_window.figure.add_subplot(len(data), 1, index + 1)
                 np_bins = np.histogram_bin_edges(self.df[feature_name], bins='auto')
                 for name in unique_names:
-                    hist1.hist(self.df.loc[self.df[color_by]==name, feature_name], alpha=0.5, bins=np_bins, label=name)
+                    hist1.hist(self.df.loc[self.df[color_by] == name, feature_name], alpha=0.5, bins=np_bins, label=name)
                     plt.xlabel(feature_name)
                     hist1.legend()
 
@@ -38,7 +38,8 @@ class PlotGenerator:
         return plot_window
 
     def info(self):
-        index = ['dtype', 'min', 'mean', 'max', 'isAllInts?', '# of unique', '# of nan', '# of null', 'categorical?']
+        index = ['dtype', 'min', 'mean', 'max', 'isAllInts?', '# of unique', '# of nan', '# of null', 'DataFrame Size',
+                 'categorical?']
         info_df = pd.DataFrame(index=index, columns=self.df.columns)
         for col in self.df.columns:
             info_df.loc[index[0], col] = self.df[col].dtype
@@ -50,12 +51,14 @@ class PlotGenerator:
                 pass
             try:
                 is_int_series = self.df[col]-self.df[col].astype(int)
-                info_df.loc[index[4],col] = (is_int_series.sum() == 0)
+                info_df.loc[index[4], col] = (is_int_series.sum() == 0)
             except Exception:
                 pass
             info_df.loc[index[5], col] = len(self.df[col].unique())
             info_df.loc[index[6], col] = self.df[col].isna().sum()
             info_df.loc[index[7], col] = self.df[col].isnull().sum()
+        info_df.loc[index[8], info_df.columns[0]] = self.df.shape[0]
+        info_df.fillna('', inplace=True)
 
         model = DatasetModel(dataFrame=info_df)
         info_table = QTableView()

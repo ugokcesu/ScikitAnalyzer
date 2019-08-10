@@ -1,11 +1,9 @@
-from PyQt5.QtWidgets import QWidget, QLabel, QTableWidget, QGridLayout, QTextEdit, QSizePolicy,QVBoxLayout,\
-    QCheckBox, QTableView, QHBoxLayout
+from PyQt5.QtWidgets import QWidget, QTextEdit, QSizePolicy,QVBoxLayout, \
+    QTableView, QHBoxLayout
 from PyQt5 import QtGui
-from PyQt5.QtCore import Qt, pyqtSignal
-import dataset
+from PyQt5.QtCore import pyqtSignal
 
-import gui.dataset_model
-from gui.plot_window import PlotWindow
+import dataset_model
 
 
 class TableWidget(QWidget):
@@ -36,7 +34,7 @@ class TableWidget(QWidget):
 
     def initialize_with_dataset(self, ds):
         self._description.setText(ds.description())
-        model = gui.dataset_model.DatasetModel(data=ds)
+        model = dataset_model.DatasetModel(data=ds)
         self._data_table.setModel(model)
         self.setWindowTitle(ds.name)
 

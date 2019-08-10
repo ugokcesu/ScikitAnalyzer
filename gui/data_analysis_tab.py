@@ -5,7 +5,7 @@ from PyQt5.Qt import QSizePolicy
 
 from gui.table_widget import TableWidgetState, TableWidget
 from gui.plot_window import PlotWindow
-from gui.plot_generator import PlotGenerator
+from plot_generator import PlotGenerator
 
 
 class DataAnalysisTab(QWidget):
