@@ -2,16 +2,21 @@ from PyQt5 import QtCore, QtGui
 
 
 class DatasetModel(QtGui.QStandardItemModel):
-    def __init__(self, data, parent=None):
+    def __init__(self, data=None, dataFrame=None, parent=None):
         QtGui.QStandardItemModel.__init__(self, parent)
-        self._data = data.data_frame()
+        if dataFrame is None and data is not None:
+            self._data = data.data_frame()
+        elif data is None and dataFrame is not None:
+            self._data = dataFrame
+        else:
+            return
         for row in self._data.values.tolist():
             data_row = []
             for x in row:
-                try:
+                if isinstance(x, float):
                     data_row.append(QtGui.QStandardItem("{0:.2f}".format(float(x))))
-                except ValueError:
-                    data_row.append(QtGui.QStandardItem(x))
+                else:
+                    data_row.append(QtGui.QStandardItem(str(x)))
             self.appendRow(data_row)
         return
 

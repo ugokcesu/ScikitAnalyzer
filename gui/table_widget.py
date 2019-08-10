@@ -36,7 +36,7 @@ class TableWidget(QWidget):
 
     def initialize_with_dataset(self, ds):
         self._description.setText(ds.description())
-        model = gui.dataset_model.DatasetModel(ds)
+        model = gui.dataset_model.DatasetModel(data=ds)
         self._data_table.setModel(model)
         self.setWindowTitle(ds.name)
 

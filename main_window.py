@@ -37,6 +37,7 @@ class MainWindow(QMainWindow):
         self.dataset_opened.connect(self.left_dock.data_analysis_tab.set_plot_generator)
         self.left_dock.data_load_tab.close_dataset.connect(self.mdi_area.closeAllSubWindows)
         self.left_dock.data_analysis_tab.request_plot_generation.connect(self.generate_plot_mdi)
+
         # Toolbars
         self.view_toolbar = self.addToolBar("View Toolbar")
         self.tile_action = QAction(QIcon("icons/tile.png"), "Tile Windows")
@@ -49,7 +50,7 @@ class MainWindow(QMainWindow):
         self.view_toolbar.addAction(self.cascade_action)
         self.view_toolbar.addAction(self.open_table_action)
 
-    def generate_plot_mdi(self, window: PlotWindow):
+    def generate_plot_mdi(self, window):
         self.mdi_area.addSubWindow(window)
         window.show()
         self.mdi_area.tileSubWindows()

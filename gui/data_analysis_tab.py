@@ -36,6 +36,13 @@ class DataAnalysisTab(QWidget):
         self._view_gb.setTitle("View Options")
         self._view_gb.setLayout(self._view_layout)
 
+        # info statistics
+        self._info_calculate_btn = QPushButton("Calculate Info")
+        self._info_layout = QVBoxLayout()
+        self._info_layout.addWidget(self._info_calculate_btn)
+        self._info_gb = QGroupBox()
+        self._info_gb.setLayout(self._info_layout)
+
         #histogram group
         self._hist_data_lb = QLabel("Use column:")
         self._hist_data = QListWidget()
@@ -54,20 +61,23 @@ class DataAnalysisTab(QWidget):
         self._hist_gb = QGroupBox()
         self._hist_gb.setLayout(self._hist_layout)
 
-
         # layout for the whole tab
         self._layout = QGridLayout()
         self._layout.setAlignment(Qt.AlignTop)
         self._layout.addWidget(self._view_gb, 0, 0)
-        self._layout.addWidget(self._hist_gb, 1, 0)
-
-
+        self._layout.addWidget(self._info_gb, 1, 0)
+        self._layout.addWidget(self._hist_gb, 2, 0)
         self.setLayout(self._layout)
 
         # signal slot connections
         self._view_table_cb.clicked.connect(self.update_table_widget)
         self._view_description_cb.clicked.connect(self.update_table_widget)
         self._hist_plot.clicked.connect(self.plot_histogram)
+        self._info_calculate_btn.clicked.connect(self.calculate_info)
+
+    def calculate_info(self):
+        window = self._plot_generator.info()
+        self.request_plot_generation.emit(window)
 
     def get_ds_columns(self):
         if self._ds_name == "":
