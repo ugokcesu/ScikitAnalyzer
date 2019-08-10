@@ -1,25 +1,36 @@
 from PyQt5.QtWidgets import QWidget, QLabel, QTableWidget, QGridLayout, QTextEdit, QSizePolicy,QVBoxLayout,\
-    QCheckBox, QTableView
-
+    QCheckBox, QTableView, QHBoxLayout
+from PyQt5 import QtGui
+from PyQt5.QtCore import Qt, pyqtSignal
 import dataset
+
 import gui.dataset_model
+from gui.plot_window import PlotWindow
 
 
 class TableWidget(QWidget):
-    def __init__(self, ds, name):
-        super().__init__()
+    sub_window_closed = pyqtSignal(str)
 
-        self._window_state = TableWidgetState(name)
+    def __init__(self, ds, name, parent):
+        super().__init__(parent)
+        self._window_state = TableWidgetState(name, ds.column_names())
         self._description = QTextEdit()
         self._description.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self._data_table = QTableView()
         self._data_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
-        self._layout = QVBoxLayout()
-        self._layout.addWidget(self._description, stretch=3)
-        self._layout.addWidget(self._data_table, stretch=7)
-        self.setLayout(self._layout)
+        self._data_layout = QVBoxLayout()
+        self._data_layout.addWidget(self._description, stretch=3)
+        self._data_layout.addWidget(self._data_table, stretch=7)
+
+        self._window_layout = QHBoxLayout()
+        self._plot_layout = QVBoxLayout()
+        self._window_layout.addLayout(self._data_layout)
+        self._window_layout.addLayout(self._plot_layout)
+        self.setLayout(self._window_layout)
+
+
 
         self.initialize_with_dataset(ds)
 
@@ -27,6 +38,7 @@ class TableWidget(QWidget):
         self._description.setText(ds.description())
         model = gui.dataset_model.DatasetModel(ds)
         self._data_table.setModel(model)
+        self.setWindowTitle(ds.name)
 
     def update_with_state(self, state):
         self.window_state.description_visible = state.description_visible
@@ -42,16 +54,20 @@ class TableWidget(QWidget):
         self._data_table.setVisible(flag)
         self._window_state._table_visible = flag
 
+    def closeEvent(self, a0: QtGui.QCloseEvent):
+        self.sub_window_closed.emit(self.window_state.dataset_name)
+
     @property
     def window_state(self):
         return self._window_state
 
 
-class TableWidgetState():
-    def __init__(self, name):
+class TableWidgetState:
+    def __init__(self, name, columns):
         self._description_visible = True
         self._table_visible = True
         self._dataset_name = name
+        self._column_names = columns
 
     @property
     def description_visible(self):
@@ -74,6 +90,10 @@ class TableWidgetState():
     @property
     def dataset_name(self):
         return self._dataset_name
+
+    @property
+    def column_names(self):
+        return self._column_names
 
 
 

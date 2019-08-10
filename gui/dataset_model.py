@@ -6,7 +6,12 @@ class DatasetModel(QtGui.QStandardItemModel):
         QtGui.QStandardItemModel.__init__(self, parent)
         self._data = data.data_frame()
         for row in self._data.values.tolist():
-            data_row = [QtGui.QStandardItem("{0:.2f}".format(x)) for x in row]
+            data_row = []
+            for x in row:
+                try:
+                    data_row.append(QtGui.QStandardItem("{0:.2f}".format(float(x))))
+                except ValueError:
+                    data_row.append(QtGui.QStandardItem(x))
             self.appendRow(data_row)
         return
 

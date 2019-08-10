@@ -23,6 +23,8 @@ class LeftDock(QDockWidget):
         # Set tab widget as the widget of dock widget
         self.setWidget(self._tab_widget)
 
+        self._data_load_tab.close_dataset.connect(self._data_analysis_tab.update_upon_closing_dataset)
+
     @property
     def data_load_tab(self):
         return self._data_load_tab
