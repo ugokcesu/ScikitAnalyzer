@@ -10,14 +10,27 @@ class DatasetModel(QtGui.QStandardItemModel):
             self._data = dataFrame
         else:
             return
-        for row in self._data.values.tolist():
+        for index, row in enumerate(self._data.values.tolist()):
             data_row = []
+
             for x in row:
                 if isinstance(x, float):
-                    data_row.append(QtGui.QStandardItem("{0:.2f}".format(float(x))))
+                    item = QtGui.QStandardItem()
+                    item.setData(float(x), QtCore.Qt.EditRole)
+                    # data_row.append(QtGui.QStandardItem("{0:.2f}".format(float(x))))
+                    data_row.append(item)
+                elif isinstance(x, bool):
+                    item = QtGui.QStandardItem()
+                    item.setData(bool(x), QtCore.Qt.EditRole)
+                    data_row.append(item)
+                elif isinstance(x, int):
+                    item = QtGui.QStandardItem()
+                    item.setData(int(x), QtCore.Qt.EditRole)
+                    data_row.append(item)
                 else:
                     data_row.append(QtGui.QStandardItem(str(x)))
             self.appendRow(data_row)
+
         return
 
     def rowCount(self, parent=None):
@@ -32,3 +45,10 @@ class DatasetModel(QtGui.QStandardItemModel):
         if orientation == QtCore.Qt.Vertical and role == QtCore.Qt.DisplayRole:
             return self._data.index[x]
         return None
+
+    def flags(self, index):
+        row = index.row()
+        if self._data.index[row] == "categorical?":
+            return QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEditable
+        else:
+            return QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable

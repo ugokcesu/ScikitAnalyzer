@@ -57,7 +57,9 @@ class PlotGenerator:
             info_df.loc[index[5], col] = len(self.df[col].unique())
             info_df.loc[index[6], col] = self.df[col].isna().sum()
             info_df.loc[index[7], col] = self.df[col].isnull().sum()
+            info_df.loc[index[9], col] = True
         info_df.loc[index[8], info_df.columns[0]] = self.df.shape[0]
+
         info_df.fillna('', inplace=True)
 
         model = DatasetModel(dataFrame=info_df)
