@@ -16,6 +16,7 @@ class TableWidget(QWidget):
         self._description.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self._data_table = QTableView()
         self._data_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self._data_table.setAlternatingRowColors(True)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
         self._data_layout = QVBoxLayout()
@@ -27,8 +28,6 @@ class TableWidget(QWidget):
         self._window_layout.addLayout(self._data_layout)
         self._window_layout.addLayout(self._plot_layout)
         self.setLayout(self._window_layout)
-
-
 
         self.initialize_with_dataset(ds)
 

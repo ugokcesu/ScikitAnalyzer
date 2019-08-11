@@ -25,6 +25,8 @@ class Dataset:
         else:
             self._df['target'] = self._bunch.target
 
+        self._info_df = None
+
     @classmethod
     def create_dataset(cls, bunch, name):
         if (not hasattr(bunch, 'data')) or (not hasattr(bunch, 'target')):
@@ -41,6 +43,10 @@ class Dataset:
     @property
     def name(self):
         return self._name
+
+    @property
+    def info_df(self):
+        return self._info_df
 
     def column_names(self):
         return [str(x) for x in self._df.columns]

@@ -50,8 +50,13 @@ class MainWindow(QMainWindow):
         self.view_toolbar.addAction(self.cascade_action)
         self.view_toolbar.addAction(self.open_table_action)
 
-    def generate_plot_mdi(self, window):
+    def generate_plot_mdi(self, window, title):
+        if title == "Info Stats":
+            for sub in self.mdi_area.subWindowList():
+                if sub.windowTitle() == title:
+                    sub.close()
         self.mdi_area.addSubWindow(window)
+        window.setWindowTitle(title)
         window.show()
         self.mdi_area.tileSubWindows()
 
