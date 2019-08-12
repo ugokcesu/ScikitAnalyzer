@@ -14,6 +14,7 @@ class Dataset:
             self._df = pd.DataFrame(self._bunch.data, columns=self._bunch.feature_names)
         else:
             self._df = pd.DataFrame(self._bunch.data)
+            self._df.columns = self._df.columns.astype(str)
 
         if hasattr(self._bunch, 'target_names'):
             if len(self._bunch.target.shape) == 1:

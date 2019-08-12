@@ -10,7 +10,7 @@ from plot_generator import PlotGenerator
 
 
 class DataAnalysisTab(QWidget):
-    request_plot_generation = pyqtSignal(PlotWindow, str)
+    request_plot_generation = pyqtSignal(QWidget, str)
 
     def __init__(self, parent=None):
         super().__init__(parent)

@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from PyQt5.QtWidgets import QTableView
+from PyQt5.QtWidgets import QTableView, QWidget, QGridLayout, QScrollArea, QLabel
 from PyQt5.QtGui import QStandardItem
 
 from dataset import Dataset
@@ -15,33 +15,92 @@ class PlotGenerator:
         self.df = ds.data_frame()
 
     def generate_histogram(self, data: list, color_by=""):
-        plot_window = PlotWindow(height=3*len(data))
+        container_widget = QWidget()
+        container_layout = QGridLayout()
+        container_widget.setLayout(container_layout)
+        super_container = QWidget()
+        super_scroll = QScrollArea()
+
+        super_layout = QGridLayout()
+        super_layout.addWidget(super_scroll, 0, 0)
+        super_container.setLayout(super_layout)
+
         if not hasattr(self.df, color_by):
             for index, item in enumerate(data):
+                plot_window = PlotWindow(height=3)
                 feature_name = item.data(0)
                 hist1 = plot_window.figure.add_subplot(len(data), 1, index+1)
                 np_bins = np.histogram_bin_edges(self.df[feature_name], bins='auto')
                 hist1.hist(self.df[feature_name], alpha=0.5, bins=np_bins, label=feature_name)
+                hist1.set_position([0.1, 0.2, 0.85, 0.75])
                 plt.xlabel(feature_name)
                 hist1.legend()
+                container_layout.addWidget(plot_window, index, 0)
         else:
             unique_names = self.df[color_by].unique()
             for index, item in enumerate(data):
+                plot_window = PlotWindow(height=3)
                 feature_name = item.data(0)
                 hist1 = plot_window.figure.add_subplot(len(data), 1, index + 1)
                 np_bins = np.histogram_bin_edges(self.df[feature_name], bins='auto')
                 all_data = []
                 for name in unique_names:
                     all_data.append(self.df.loc[self.df[color_by] == name, feature_name])
-                nedir = hist1.hist(all_data, stacked=True, bins=np_bins, label=name)
+                hist_data = hist1.hist(all_data, stacked=True, bins=np_bins, label=unique_names)
+                hist1.set_position([0.1, 0.2, 0.85, 0.75])
                 plt.xlabel(feature_name)
                 hist1.legend()
-                    #hist1.hist(self.df.loc[self.df[color_by] == name, feature_name], stacked=True, alpha=0.5, bins=np_bins, label=name)
-                    #plt.xlabel(feature_name)
-                    #hist1.legend()
+                dispersion = self.dispersion(hist_data)
+                print(dispersion)
+                dispersion_label = "Dispersion % :\n"
+                for i, name in enumerate(unique_names):
+                    dispersion_label += "{} : {:.2f}%\n".format(name, dispersion[i]*100)
+                label = QLabel(dispersion_label)
+                container_layout.addWidget(plot_window, index, 0)
+                container_layout.addWidget(label, index, 1)
+            # for the current feature, work out hist dispersion
+
 
         # plot_window.layout.addWidget(plot_window)
-        return plot_window
+        super_scroll.setWidget(container_widget)
+        return super_container
+
+    def dispersion(self, hist_data):
+        cum_data = hist_data[0]
+        # compute bin_data which stores nb samples in each bin for each category
+        bin_data = []
+        for index, array in enumerate(cum_data):
+            bin_data.append(np.copy(array))
+            if index == 0:
+                continue
+            for i, item in enumerate(array):
+                bin_data[index][i] = (cum_data[index][i] - cum_data[index - 1][i])
+
+        # dispersion will be ratio of bin_data of a category to all categories added for each bin (between 0-1)
+        dispersion = [None] * len(cum_data)
+        # dispersion = bin_data / added so we need "added" array
+        added = [0] * len(bin_data[0])
+        for array in bin_data:
+            added += array
+        added[added == 0] = 1   # to avoid divide by zero for empty bins
+
+        for index, _ in enumerate(bin_data):
+            dispersion[index] = (bin_data[index] / added)
+
+        # if in a bin we have 1% categoryA and 99% categoryB samples, that means dispersion is very low
+        # so for both categories we would set it to 1%. i.e: if dispersion > 0.5, take complement
+        for i, array in enumerate(dispersion):
+            for j, item in enumerate(array):
+                if item > 0.5:
+                    dispersion[i][j] = 1 - item
+
+        # each bin's dispersion will only affect the samples in that bin, so dispersion for each bin
+        # needs to be weighed by nb samples in that bin
+        weighed_dispersion = [None] * len(cum_data)
+        for index, array in enumerate(dispersion):
+            weighed_dispersion[index] = (sum(array * cum_data[-1]) / sum(cum_data[-1]))
+
+        return weighed_dispersion
 
     def info(self, convert=True, cat_limit=5):
         # if something was changed, run info() again
