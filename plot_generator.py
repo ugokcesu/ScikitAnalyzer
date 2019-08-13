@@ -65,7 +65,8 @@ class PlotGenerator:
         super_scroll.setWidget(container_widget)
         return super_container
 
-    def dispersion(self, hist_data):
+    @staticmethod
+    def dispersion(hist_data):
         cum_data = hist_data[0]
         # compute bin_data which stores nb samples in each bin for each category
         bin_data = []
@@ -146,7 +147,4 @@ class PlotGenerator:
         info_table.setAlternatingRowColors(True)
         info_table.setModel(model)
         info_table.setWindowTitle("Info Stats")
-
         return info_table, info_df.loc[index[9], :]
-
-

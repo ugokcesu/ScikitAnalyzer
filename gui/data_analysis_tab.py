@@ -15,7 +15,7 @@ class DataAnalysisTab(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("DataAnalysisDock")
-        self.setWindowTitle("Data Analysis")
+        self.setWindowTitle("Univariate Analysis")
 
         self._ds_name = ""
         self._ds_columns = []
@@ -159,6 +159,7 @@ class DataAnalysisTab(QWidget):
         window, self._categorical_df = self._plot_generator.info(convert=conv, cat_limit=cat)
         self.request_plot_generation.emit(window, "Info Stats")
         window.model().itemChanged.connect(self.table_edited)
+        self._categorical_columns = []
         for index, col in enumerate(self._ds_columns):
             if self._categorical_df[index]:
                 self._categorical_columns.append(col)
