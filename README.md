@@ -12,7 +12,7 @@ Check out <a href="https://youtu.be/STYHo8Lq0Qw"> this youtube video</a> for a s
 <img src="Screen Shot 1.png"> </img>
 
 # Running the Code / Installation Notes 
-## For Python
+
 See requirements.txt for a full list of modules and corresponding versions. 
 Mainly, the datasets are gathered from <b>scikit-learn.datasetsa</b>, <b>PyQt5</b> for the graphical interface and <b>matplotlib</b> for plotting the histograms, 
 <b>pandas</b> for storing datasets.
