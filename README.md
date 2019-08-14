@@ -17,5 +17,5 @@ See requirements.txt for a full list of modules and corresponding versions.
 Mainly, the datasets are gathered from <b>scikit-learn.datasetsa</b>, <b>PyQt5</b> for the graphical interface and <b>matplotlib</b> for plotting the histograms, 
 <b>pandas</b> for storing datasets.
 <p>
-Entry point for software is in <b>main_window.py</b>
+Entry point is in <b>main_window.py</b>
 
