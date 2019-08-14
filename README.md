@@ -1,6 +1,6 @@
 # Scikit Analyzer
 A python program with a pyqt interface for loading and analyzing datasets available in <b>scikit-learn.datasets</b>.
-Check out <a href="https://youtu.be/STYHo8Lq0Qw"> this youtube video</a> for a short demo
+Check out <a href="https://youtu.be/69ZbdSdl_4o"> this youtube video</a> for a short demo
 
 <b> Features</b>
 <ul> 
