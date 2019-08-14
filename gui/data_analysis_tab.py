@@ -53,7 +53,7 @@ class DataAnalysisTab(QWidget):
         self._info_layout.addWidget(self._info_categorical_limit_lb, 1, 0)
         self._info_layout.addWidget(self._info_cat_limit_sb, 1, 1)
         self._info_layout.addWidget(self._info_calculate_btn, 2, 0)
-        self._info_gb = QGroupBox()
+        self._info_gb = QGroupBox("Info Statistics")
         self._info_gb.setLayout(self._info_layout)
 
         #histogram group
@@ -72,7 +72,7 @@ class DataAnalysisTab(QWidget):
         self._hist_layout.addWidget(self._hist_color_by, 1, 1)
         self._hist_layout.addWidget(self._hist_plot, 2, 0, 1, 2)
         self._hist_layout.setAlignment(Qt.AlignTop)
-        self._hist_gb = QGroupBox()
+        self._hist_gb = QGroupBox("Histogram")
         self._hist_gb.setLayout(self._hist_layout)
 
         # layout for the whole tab
@@ -89,7 +89,17 @@ class DataAnalysisTab(QWidget):
         self._hist_plot.clicked.connect(self.plot_histogram)
         self._info_calculate_btn.clicked.connect(self.calculate_info)
 
+        # keep histogram area grayed out until info stats are calculated
 
+    def dataset_opened(self, ds):
+        self.set_plot_generator(ds)
+        self.disable_histogram()
+
+    def disable_histogram(self):
+        self._hist_gb.setDisabled(True)
+
+    def enable_histogram(self):
+        self._hist_gb.setDisabled(False)
 
     # when checkboxes are clicked, send updates to the TableView
     # I am guessing this should emit a signal which main window should pick up
@@ -163,6 +173,7 @@ class DataAnalysisTab(QWidget):
         for index, col in enumerate(self._ds_columns):
             if self._categorical_df[index]:
                 self._categorical_columns.append(col)
+        self.enable_histogram()
 
     def table_edited(self, sender):
         print(" I changed, sender = {}, {} ={}".format(sender.row(), sender.column(), sender.data(Qt.EditRole)))

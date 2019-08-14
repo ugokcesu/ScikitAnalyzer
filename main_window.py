@@ -34,7 +34,7 @@ class MainWindow(QMainWindow):
 
         self.left_dock.data_load_tab.load_button_connect_to(self.create_table_view)
         self.dataset_opened.connect(self.left_dock.data_load_tab.dataset_opened)
-        self.dataset_opened.connect(self.left_dock.data_analysis_tab.set_plot_generator)
+        self.dataset_opened.connect(self.left_dock.data_analysis_tab.dataset_opened)
         self.left_dock.data_load_tab.close_dataset.connect(self.mdi_area.closeAllSubWindows)
         self.left_dock.data_analysis_tab.request_plot_generation.connect(self.generate_plot_mdi)
 

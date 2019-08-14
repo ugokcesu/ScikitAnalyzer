@@ -30,7 +30,10 @@ class PlotGenerator:
                 plot_window = PlotWindow(height=3)
                 feature_name = item.data(0)
                 hist1 = plot_window.figure.add_subplot(len(data), 1, index+1)
-                np_bins = np.histogram_bin_edges(self.df[feature_name], bins='auto')
+                try:
+                    np_bins = np.histogram_bin_edges(self.df[feature_name], bins='auto')
+                except TypeError:
+                    continue
                 hist1.hist(self.df[feature_name], alpha=0.5, bins=np_bins, label=feature_name)
                 hist1.set_position([0.1, 0.2, 0.85, 0.75])
                 plt.xlabel(feature_name)

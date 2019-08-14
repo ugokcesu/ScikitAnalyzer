@@ -7,6 +7,7 @@ import sklearn.datasets
 
 class DataLoaderTab(QWidget):
     close_dataset = pyqtSignal()
+
     def __init__(self, parent=None):
         super().__init__(parent)
 
