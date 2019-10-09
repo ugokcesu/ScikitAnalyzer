@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 
 class PlotGenerator:
     def __init__(self, ds: Dataset):
-        self.df = ds.data_frame()
+        self.df = ds.df
 
     def generate_histogram(self, data: list, color_by=""):
         container_widget = QWidget()

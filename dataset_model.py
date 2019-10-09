@@ -5,7 +5,7 @@ class DatasetModel(QtGui.QStandardItemModel):
     def __init__(self, data=None, dataFrame=None, parent=None):
         QtGui.QStandardItemModel.__init__(self, parent)
         if dataFrame is None and data is not None:
-            self._data = data.data_frame()
+            self._data = data.df
         elif data is None and dataFrame is not None:
             self._data = dataFrame
         else:

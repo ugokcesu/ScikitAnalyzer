@@ -38,8 +38,14 @@ class Dataset:
     def description(self):
         return self._bunch.DESCR
 
-    def data_frame(self):
+    @property
+    def df(self):
         return self._df
+
+    @df.setter
+    def df(self, df):
+        self._df = df
+
 
     @property
     def name(self):

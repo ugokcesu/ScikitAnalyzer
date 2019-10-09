@@ -3,6 +3,7 @@ from PyQt5.QtCore import Qt
 
 from gui.data_loader_tab import DataLoaderTab
 from gui.data_analysis_tab import DataAnalysisTab
+from gui.data_editing_tab import DataEditingTab
 
 
 class LeftDock(QDockWidget):
@@ -17,13 +18,19 @@ class LeftDock(QDockWidget):
         # Create the tabs
         self._data_load_tab = DataLoaderTab()
         self._data_analysis_tab = DataAnalysisTab()
+        self._data_editing_tab = DataEditingTab()
         # Add tabs to tab widget
         self._tab_widget.addTab(self._data_load_tab, self._data_load_tab.windowTitle())
         self._tab_widget.addTab(self._data_analysis_tab, self._data_analysis_tab.windowTitle())
+        self._tab_widget.addTab(self._data_editing_tab, self._data_editing_tab.windowTitle())
         # Set tab widget as the widget of dock widget
         self.setWidget(self._tab_widget)
 
         self._data_load_tab.close_dataset.connect(self._data_analysis_tab.update_upon_closing_dataset)
+
+    def connect_request_selection_signal_to(self, func):
+        self._data_editing_tab.request_table_selection.connect(func)
+
 
     @property
     def data_load_tab(self):
@@ -32,3 +39,7 @@ class LeftDock(QDockWidget):
     @property
     def data_analysis_tab(self):
         return self._data_analysis_tab
+
+    @property
+    def data_editing_tab(self):
+        return self._data_editing_tab

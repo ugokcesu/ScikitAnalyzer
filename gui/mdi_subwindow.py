@@ -10,6 +10,7 @@ class MdiSubWindow(QMdiSubWindow):
         self.table_widget = TableWidget(ds, name, parent)
         self.setWidget(self.table_widget)
 
+
     # we want to be able to show it again if user closes it
     # setting QA_Quitonclose doesn't help because the tables come up empty
     def closeEvent(self, closeEvent: QtGui.QCloseEvent):

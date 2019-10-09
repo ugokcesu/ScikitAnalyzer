@@ -14,7 +14,8 @@ from gui.mdi_subwindow import MdiSubWindow
 from gui.plot_window import PlotWindow
 
 class MainWindow(QMainWindow):
-    dataset_opened = pyqtSignal(Dataset)
+    dataset_opened = pyqtSignal(Dataset, TableWidget)
+    dataset_updated = pyqtSignal(Dataset, TableWidget)
 
     def __init__(self):
         super().__init__()
@@ -24,6 +25,7 @@ class MainWindow(QMainWindow):
         self.left_dock.setAllowedAreas(Qt.LeftDockWidgetArea)
         self.left_dock.setFeatures(QDockWidget.NoDockWidgetFeatures)
         self.dataset_dictionary = {}
+        self._current_dataset_name = ""
 
         # MDI SETUP
         self.mdi_area = QMdiArea()
@@ -32,11 +34,22 @@ class MainWindow(QMainWindow):
         self.table_sub_window = None
         self.mdi_area.subWindowActivated.connect(self.left_dock.data_analysis_tab.update_upon_window_activation)
 
+        #CONNECTIONS
+
         self.left_dock.data_load_tab.load_button_connect_to(self.create_table_view)
         self.dataset_opened.connect(self.left_dock.data_load_tab.dataset_opened)
         self.dataset_opened.connect(self.left_dock.data_analysis_tab.dataset_opened)
+        self.dataset_opened.connect(self.left_dock.data_editing_tab.dataset_opened)
+
+        self.dataset_updated.connect(self.left_dock.data_load_tab.dataset_opened)
+        self.dataset_updated.connect(self.left_dock.data_analysis_tab.dataset_opened)
+        self.dataset_updated.connect(self.left_dock.data_editing_tab.dataset_opened)
+
         self.left_dock.data_load_tab.close_dataset.connect(self.mdi_area.closeAllSubWindows)
+        self.left_dock.data_load_tab.close_dataset.connect(self.remove_current_dataset)
         self.left_dock.data_analysis_tab.request_plot_generation.connect(self.generate_plot_mdi)
+
+
 
         # Toolbars
         self.view_toolbar = self.addToolBar("View Toolbar")
@@ -74,13 +87,17 @@ class MainWindow(QMainWindow):
                 return None
             ds = Dataset.create_dataset(skds, dataset_name)
             if ds is not None:
+                self._current_dataset_name = dataset_name
                 self.dataset_dictionary[dataset_name] = ds
                 self.table_sub_window = MdiSubWindow(self.dataset_dictionary[dataset_name], dataset_name, self)
                 self.table_sub_window.setWindowFlags(Qt.CustomizeWindowHint | Qt.WindowTitleHint | Qt.Tool)
                 self.mdi_area.addSubWindow(self.table_sub_window)
                 self.table_sub_window.show()
+                self.table_sub_window.table_widget.checkboxes_clicked.connect(self.left_dock.data_analysis_tab.update_self_with_window_state)
                 self.mdi_area.tileSubWindows()
-                self.dataset_opened.emit(self.dataset_dictionary[dataset_name])
+                self.dataset_opened.emit(self.dataset_dictionary[dataset_name], self.table_sub_window.table_widget)
+                self.left_dock.data_editing_tab.table_changed.connect(self.update_table)
+                self.left_dock.data_editing_tab.df_changed.connect(self.update_df)
             else:
                 return None
         else:
@@ -89,6 +106,9 @@ class MainWindow(QMainWindow):
     def remove_dataset_from_dictionary(self, name):
         self.dataset_dictionary.pop(name)
 
+    def remove_current_dataset(self):
+        self.dataset_dictionary.pop(self._current_dataset_name)
+
     def list_opened_datasets(self):
         return self.dataset_dictionary.keys()
 
@@ -96,6 +116,14 @@ class MainWindow(QMainWindow):
         if self.table_sub_window is not None:
             self.table_sub_window.show()
 
+    def update_table(self):
+        self.table_sub_window.table_widget.update_with_ds(self.dataset_dictionary[self._current_dataset_name])
+        self.dataset_updated.emit(self.dataset_dictionary[self._current_dataset_name], self.table_sub_window.table_widget)
+
+    #This is needed when the operation is not inplace=True, and a new copy of ds needs to be sent to main window
+    def update_df(self, df):
+        self.dataset_dictionary[self._current_dataset_name].df = df
+        self.update_table()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
