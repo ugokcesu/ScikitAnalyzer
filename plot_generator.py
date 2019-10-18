@@ -10,8 +10,6 @@ import matplotlib as mpl
 
 from sklearn.preprocessing import MinMaxScaler
 
-
-
 from dataset import Dataset
 from color_by_val_model import color_map, ColorByValModel
 from dataset_model import DatasetModel
@@ -110,6 +108,9 @@ class PlotGenerator(QObject):
         super_scroll.setWidgetResizable(True)
         return super_container
 
+    # like other plots, generate_xplot, generates the window containing plots
+    # unlike other plots, it passes the dataset to the window so later the window updates/redraws its own plots
+    # is that ok?
     def generate_xplot(self, x_props, y_props):
         container_widget = QWidget()
         container_layout = QGridLayout()
@@ -130,7 +131,7 @@ class PlotGenerator(QObject):
                 ax = plot_window.figure.add_subplot(1, 1, 1)
                 xplot_window_collection.axes[j][i] = ax
                 xplot_window_collection.props[j][i] = out_prop, in_prop
-                xplot = ax.scatter(self.df[out_prop.data(0)], self.df[in_prop.data(0)], alpha=0.3, marker='.', c=self.df[out_prop.data(0)])
+                xplot = ax.scatter(self.df[out_prop.data(0)], self.df[in_prop.data(0)], alpha=0.3, marker='.', c='blue')
                 xplot_window_collection.xplots[j][i] = xplot
                 ax.set_xlabel(out_prop.data(0))
                 ax.set_ylabel(in_prop.data(0))
@@ -148,7 +149,6 @@ class PlotGenerator(QObject):
         scaled = MinMaxScaler().fit_transform(data.values.reshape(-1, 1))
         rgb = color_map(scaled)
         self.data_sent.emit(rgb.reshape(-1, 4), data.min(), data.max() )
-
 
     @staticmethod
     def dispersion(hist_data):
