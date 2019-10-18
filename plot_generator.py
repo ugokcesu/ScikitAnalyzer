@@ -1,18 +1,34 @@
 import numpy as np
 import pandas as pd
 from PyQt5.QtWidgets import QTableView, QWidget, QGridLayout, QScrollArea, QLabel
+from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtGui import QStandardItem
-
-from dataset import Dataset
-from dataset_model import DatasetModel
-from gui.plot_window import PlotWindow
+from PyQt5.QtCore import QObject
 
 import matplotlib.pyplot as plt
+import matplotlib as mpl
+
+from sklearn.preprocessing import MinMaxScaler
 
 
-class PlotGenerator:
+
+from dataset import Dataset
+from color_by_val_model import color_map, ColorByValModel
+from dataset_model import DatasetModel
+from gui.plot_window import PlotWindow
+from gui.color_map_window import ColorMapWindow
+from gui.hist2d_plot_window import Hist2dPlotWindow
+from gui.xplot_window_collection import XPlotWindowCollection
+
+
+class PlotGenerator(QObject):
+    columns_sent = pyqtSignal(str, object)
+    data_sent = pyqtSignal(np.ndarray, float, float) # rgb array, min, max
+
     def __init__(self, ds: Dataset):
+        super().__init__()
         self.df = ds.df
+        self.ds = ds
 
     def generate_histogram(self, data: list, color_by=""):
         container_widget = QWidget()
@@ -63,10 +79,76 @@ class PlotGenerator:
                 container_layout.addWidget(label, index, 1)
             # for the current feature, work out hist dispersion
 
-
         # plot_window.layout.addWidget(plot_window)
         super_scroll.setWidget(container_widget)
         return super_container
+
+    def generate_hist2d(self, x_props, y_props):
+        container_widget = QWidget()
+        container_layout = QGridLayout()
+        container_widget.setLayout(container_layout)
+        super_container = QWidget()
+        super_scroll = QScrollArea()
+
+        super_layout = QGridLayout()
+        super_layout.addWidget(super_scroll, 0, 0)
+        super_container.setLayout(super_layout)
+
+        for i, out_prop in enumerate(x_props):
+            for j, in_prop in enumerate(y_props):
+                plot_window = Hist2dPlotWindow() # PlotWindow()
+                ax = plot_window.figure.add_subplot(1, 1, 1)
+                h2d = ax.hist2d(self.df[out_prop.data(0)], self.df[in_prop.data(0)])
+                ax.set_xlabel(out_prop.data(0))
+                ax.set_ylabel(in_prop.data(0))
+                plot_window.figure.subplots_adjust(bottom=0.18)
+                plot_window.figure.colorbar(h2d[3], ax=ax)
+                container_layout.addWidget(plot_window, j, i)
+                # this should somehow be automatic
+                plot_window.update_slider()
+        super_scroll.setWidget(container_widget)
+        super_scroll.setWidgetResizable(True)
+        return super_container
+
+    def generate_xplot(self, x_props, y_props):
+        container_widget = QWidget()
+        container_layout = QGridLayout()
+        container_widget.setLayout(container_layout)
+        super_container = QWidget()
+        super_scroll = QScrollArea()
+
+        super_layout = QGridLayout()
+        super_layout.addWidget(super_scroll, 0, 0)
+        super_container.setLayout(super_layout)
+
+        xplot_window_collection = XPlotWindowCollection(self.ds, x_props, y_props)
+
+        for i, out_prop in enumerate(x_props):
+            for j, in_prop in enumerate(y_props):
+                plot_window = PlotWindow()
+                xplot_window_collection.windows[j][i] = plot_window
+                ax = plot_window.figure.add_subplot(1, 1, 1)
+                xplot_window_collection.axes[j][i] = ax
+                xplot_window_collection.props[j][i] = out_prop, in_prop
+                xplot = ax.scatter(self.df[out_prop.data(0)], self.df[in_prop.data(0)], alpha=0.3, marker='.', c=self.df[out_prop.data(0)])
+                xplot_window_collection.xplots[j][i] = xplot
+                ax.set_xlabel(out_prop.data(0))
+                ax.set_ylabel(in_prop.data(0))
+                plot_window.figure.subplots_adjust(bottom=0.2)
+                container_layout.addWidget(plot_window, j, i)
+        super_scroll.setWidget(container_widget)
+        super_scroll.setWidgetResizable(True)
+        xplot_window_collection.layout.addWidget(super_container, 0, 0, 1, 3)
+        return xplot_window_collection
+
+    def send_data(self, col):
+        if col not in self.ds.column_names():
+            return
+        data = self.df[col]
+        scaled = MinMaxScaler().fit_transform(data.values.reshape(-1, 1))
+        rgb = color_map(scaled)
+        self.data_sent.emit(rgb.reshape(-1, 4), data.min(), data.max() )
+
 
     @staticmethod
     def dispersion(hist_data):
@@ -105,6 +187,42 @@ class PlotGenerator:
             weighed_dispersion[index] = (sum(array * cum_data[-1]) / sum(cum_data[-1]))
 
         return weighed_dispersion
+
+    def correlation_matrix(self, sort_key=None):
+        container_widget = QWidget()
+        container_layout = QGridLayout()
+        container_widget.setLayout(container_layout)
+        super_container = QWidget()
+        super_scroll = QScrollArea()
+
+        super_layout = QGridLayout()
+        super_layout.addWidget(super_scroll, 0, 0)
+        super_container.setLayout(super_layout)
+
+        if sort_key:
+            corr = self.df.corr().sort_values(by=sort_key, ascending=False)
+        else:
+            corr = self.df.corr()
+
+        model = ColorByValModel(dataFrame=corr)
+        corr_table = QTableView()
+        corr_table.setAlternatingRowColors(True)
+        corr_table.setModel(model)
+        corr_table.setWindowTitle("Correlation Matrix")
+
+        plot_window = ColorMapWindow(height=1)
+        ax = plot_window.figure.add_axes([0.05, 0.80, 0.9, 0.15])
+        norm = mpl.colors.Normalize(vmin=-1, vmax=1)
+        cb1 = mpl.colorbar.ColorbarBase(ax, cmap=color_map,
+                                        norm=norm,
+                                        orientation='horizontal')
+        cb1.set_label("Correlation color scale")
+
+        container_layout.addWidget(corr_table)
+        container_layout.addWidget(plot_window)
+        super_scroll.setWidget(container_widget)
+        super_scroll.setWidgetResizable(True)
+        return super_container
 
     def info(self, convert=True, cat_limit=5):
         # if something was changed, run info() again
@@ -151,3 +269,6 @@ class PlotGenerator:
         info_table.setModel(model)
         info_table.setWindowTitle("Info Stats")
         return info_table, info_df.loc[index[9], :]
+
+    def send_ds_columns(self, object_name):
+        self.columns_sent.emit(object_name, self.ds.column_names())

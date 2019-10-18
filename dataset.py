@@ -7,6 +7,7 @@ class Dataset:
         super().__init__()
         self._bunch = bunch
         self._name = name
+        # set self._df, the pandas dataframe
         if (not hasattr(self._bunch, 'data')) or (not hasattr(self._bunch, 'target')):
             return None
 
@@ -27,6 +28,15 @@ class Dataset:
             self._df['target'] = self._bunch.target
 
         self._info_df = None
+        self._categorical_columns = []
+
+    @property
+    def categorical_columns(self):
+        return self._categorical_columns
+
+    @categorical_columns.setter
+    def categorical_columns(self, v):
+        self._categorical_columns = v
 
     @classmethod
     def create_dataset(cls, bunch, name):
@@ -58,3 +68,5 @@ class Dataset:
     def column_names(self):
         return [str(x) for x in self._df.columns]
 
+    def samples(self):
+        return self.df.shape[0]

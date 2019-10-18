@@ -1,7 +1,7 @@
 import sys
 
-from PyQt5.Qt import QApplication, QSize, QIcon, QMdiSubWindow, QWidget, QDockWidget, QTabWidget
-from PyQt5.QtWidgets import QMainWindow, QMdiArea, QTableWidget, QAction
+from PyQt5.Qt import QApplication, QSize, QIcon, QMdiSubWindow, QWidget, QDockWidget, QTabWidget, QPushButton, QLayout
+from PyQt5.QtWidgets import QMainWindow, QMdiArea, QTableWidget, QAction, QCheckBox
 from PyQt5.QtCore import Qt, pyqtSignal
 
 from gui.data_loader_tab import DataLoaderTab
@@ -11,7 +11,9 @@ from dataset import Dataset
 from gui.table_widget import TableWidget
 from gui.left_dock import LeftDock
 from gui.mdi_subwindow import MdiSubWindow
+from gui.range_slider import QRangeSlider
 from gui.plot_window import PlotWindow
+from gui.dynamic_combobox import DynamicComboBox
 
 class MainWindow(QMainWindow):
     dataset_opened = pyqtSignal(Dataset, TableWidget)
@@ -37,18 +39,23 @@ class MainWindow(QMainWindow):
         #CONNECTIONS
 
         self.left_dock.data_load_tab.load_button_connect_to(self.create_table_view)
+
         self.dataset_opened.connect(self.left_dock.data_load_tab.dataset_opened)
         self.dataset_opened.connect(self.left_dock.data_analysis_tab.dataset_opened)
+        self.dataset_opened.connect(self.left_dock.data_analysis_tab_multi.dataset_opened)
         self.dataset_opened.connect(self.left_dock.data_editing_tab.dataset_opened)
 
+        self.dataset_updated.connect(self.disable_window_widgets)
         self.dataset_updated.connect(self.left_dock.data_load_tab.dataset_opened)
         self.dataset_updated.connect(self.left_dock.data_analysis_tab.dataset_opened)
+        self.dataset_updated.connect(self.left_dock.data_analysis_tab_multi.dataset_opened)
         self.dataset_updated.connect(self.left_dock.data_editing_tab.dataset_opened)
 
         self.left_dock.data_load_tab.close_dataset.connect(self.mdi_area.closeAllSubWindows)
         self.left_dock.data_load_tab.close_dataset.connect(self.remove_current_dataset)
         self.left_dock.data_analysis_tab.request_plot_generation.connect(self.generate_plot_mdi)
-
+        self.left_dock.data_analysis_tab_multi.request_plot_generation.connect(self.generate_plot_mdi)
+        self.left_dock.data_analysis_tab.info_calculated.connect(self.set_categoricals)
 
 
         # Toolbars
@@ -62,6 +69,13 @@ class MainWindow(QMainWindow):
         self.view_toolbar.addAction(self.tile_action)
         self.view_toolbar.addAction(self.cascade_action)
         self.view_toolbar.addAction(self.open_table_action)
+
+    def set_categoricals(self, cats):
+        self.current_ds._categorical_columns = cats
+
+    def update_categoricals(self, cat):
+        if not cat in self.current_ds.categorical_columns:
+            self.current_ds.categorical_columns.append(cat)
 
     def generate_plot_mdi(self, window, title):
         if title == "Info Stats":
@@ -89,6 +103,7 @@ class MainWindow(QMainWindow):
             if ds is not None:
                 self._current_dataset_name = dataset_name
                 self.dataset_dictionary[dataset_name] = ds
+                self.current_ds = ds
                 self.table_sub_window = MdiSubWindow(self.dataset_dictionary[dataset_name], dataset_name, self)
                 self.table_sub_window.setWindowFlags(Qt.CustomizeWindowHint | Qt.WindowTitleHint | Qt.Tool)
                 self.mdi_area.addSubWindow(self.table_sub_window)
@@ -124,6 +139,15 @@ class MainWindow(QMainWindow):
     def update_df(self, df):
         self.dataset_dictionary[self._current_dataset_name].df = df
         self.update_table()
+
+    def disable_window_widgets(self, ds, _):
+        for sub in self.mdi_area.subWindowList():
+            print(sub.windowTitle())
+            if sub.windowTitle() == "XPlot Window":
+                for child in sub.findChildren(QWidget):
+                    if isinstance(child, QRangeSlider) or isinstance(child, QPushButton) or\
+                        isinstance(child, QCheckBox) or isinstance(child, DynamicComboBox):
+                        child.setDisabled(True)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

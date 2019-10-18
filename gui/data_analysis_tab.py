@@ -11,6 +11,7 @@ from plot_generator import PlotGenerator
 
 class DataAnalysisTab(QWidget):
     request_plot_generation = pyqtSignal(QWidget, str)
+    info_calculated = pyqtSignal(list)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -19,6 +20,7 @@ class DataAnalysisTab(QWidget):
 
         self._ds_name = ""
         self._ds_columns = []
+        self._ds = None
         self._current_table_widget = None
         self._current_dataset = None
         self._categorical_df = None
@@ -95,6 +97,7 @@ class DataAnalysisTab(QWidget):
         self.set_plot_generator(ds)
         self.disable_histogram()
         self._ds_name = ds.name
+        self._ds = ds
         self._ds_columns = ds.column_names()
         self._hist_data.clear()
         self._hist_color_by.clear()
@@ -181,6 +184,7 @@ class DataAnalysisTab(QWidget):
             if self._categorical_df[index]:
                 self._categorical_columns.append(col)
         self.enable_histogram()
+        self.info_calculated.emit(self._categorical_columns)
 
     def table_edited(self, sender):
         print(" I changed, sender = {}, {} ={}".format(sender.row(), sender.column(), sender.data(Qt.EditRole)))
@@ -195,7 +199,7 @@ class DataAnalysisTab(QWidget):
         if val:
             if col not in self._categorical_columns:
                 self._categorical_columns.append(col)
-
+        self._ds.categorical_columns = self._categorical_columns
     def set_plot_generator(self, ds):
         self._plot_generator = PlotGenerator(ds)
 
