@@ -5,7 +5,7 @@ from gui.data_loader_tab import DataLoaderTab
 from gui.data_analysis_tab import DataAnalysisTab
 from gui.data_analysis_tab_multi import DataAnalysisTabMulti
 from gui.data_editing_tab import DataEditingTab
-
+from gui.fit_predict_tab import FitPredictTab
 
 class LeftDock(QDockWidget):
     def __init__(self, parent=None):
@@ -21,11 +21,14 @@ class LeftDock(QDockWidget):
         self._data_analysis_tab = DataAnalysisTab()
         self._data_analysis_tab_multi = DataAnalysisTabMulti()
         self._data_editing_tab = DataEditingTab()
+        self._fit_transform_tab = FitPredictTab()
+
         # Add tabs to tab widget
         self._tab_widget.addTab(self._data_load_tab, self._data_load_tab.windowTitle())
         self._tab_widget.addTab(self._data_analysis_tab, self._data_analysis_tab.windowTitle())
         self._tab_widget.addTab(self._data_analysis_tab_multi, self._data_analysis_tab_multi.windowTitle())
         self._tab_widget.addTab(self._data_editing_tab, self._data_editing_tab.windowTitle())
+        self._tab_widget.addTab(self._fit_transform_tab, self._fit_transform_tab.windowTitle())
 
         # Set tab widget as the widget of dock widget
         self.setWidget(self._tab_widget)
@@ -63,3 +66,7 @@ class LeftDock(QDockWidget):
     @property
     def data_analysis_tab_multi(self):
         return self._data_analysis_tab_multi
+
+    @property
+    def fit_transform_tab(self):
+        return self._fit_transform_tab

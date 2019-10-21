@@ -5,17 +5,24 @@ from PyQt5.Qt import QSizePolicy
 
 from gui.table_widget import TableWidgetState, TableWidget
 from gui.dynamic_combobox import DynamicComboBox
+from gui.ml_options.KNeighbors_options import KNeighborsOptions
+
 from plot_generator import PlotGenerator
 
+from ml_choices import Scalers, MLClassification, MLRegression, MLWidgets
 
-class DataAnalysisTab(QWidget):
+class FitPredictTab(QWidget):
     request_plot_generation = pyqtSignal(QWidget, str)
     info_calculated = pyqtSignal(list)
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setObjectName("DataAnalysisDock")
-        self.setWindowTitle("Univariate Analysis")
+        self.setObjectName("FitPredictDock")
+        self.setWindowTitle("Machine Learning")
+
+        # this dict will store ml parameters
+        # and restore them as needed (instead of generating duplicates
+        self._param_widgets = {}
 
         self._ds_name = ""
         self._ds_columns = []
@@ -26,89 +33,124 @@ class DataAnalysisTab(QWidget):
         self._categorical_columns = []
         self._plot_generator = None
 
-        # viewing options widgets and layout
-        self._current_ds_lb = QLabel("Current Dataset:")
-        self._view_description_cb = QCheckBox("Show description")
-        self._view_table_cb = QCheckBox("Show Table")
+        # data selection
+        self._data_feature_lb = QLabel("Select Features")
+        self._data_feature_list = QListWidget()
+        self._data_feature_list.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        self._data_target_lb = QLabel("Select Target")
+        self._data_target_combo = DynamicComboBox()
 
-        self._view_layout = QVBoxLayout()
-        self._view_layout.addWidget(self._current_ds_lb)
-        self._view_layout.addWidget(self._view_description_cb)
-        self._view_layout.addWidget(self._view_table_cb)
-        # viewing options group
-        self._view_gb = QGroupBox()
-        self._view_gb.setTitle("View Options")
-        self._view_gb.setLayout(self._view_layout)
+        self._data_layout = QGridLayout()
+        self._data_layout.addWidget(self._data_feature_lb, 0, 0)
+        self._data_layout.addWidget(self._data_feature_list, 1, 0)
+        self._data_layout.addWidget(self._data_target_lb, 0, 1)
+        self._data_layout.addWidget(self._data_target_combo, 1, 1)
+        self._data_target_combo.popup_clicked.connect(self.fill_target_combo)
 
-        # info statistics
-        self._info_calculate_btn = QPushButton("Calculate Info")
-        self._info_convert_to_int_cb = QCheckBox("Convert to int if possible")
-        self._info_convert_to_int_cb.setChecked(True)
-        self._info_categorical_limit_lb = QLabel("Max unique values for categoricals")
-        self._info_cat_limit_sb = QSpinBox()
-        self._info_cat_limit_sb.setValue(5)
-        self._info_cat_limit_sb.setRange(2, 10000)
+        self._data_gb = QGroupBox("Data Selection")
+        self._data_gb.setLayout(self._data_layout)
 
-        self._info_layout = QGridLayout()
-        self._info_layout.addWidget(self._info_convert_to_int_cb, 0, 0)
-        self._info_layout.addWidget(self._info_categorical_limit_lb, 1, 0)
-        self._info_layout.addWidget(self._info_cat_limit_sb, 1, 1)
-        self._info_layout.addWidget(self._info_calculate_btn, 2, 0)
-        self._info_gb = QGroupBox("Info Statistics")
-        self._info_gb.setLayout(self._info_layout)
+        # scaling
+        self._scaling_select_lb = QLabel("Select Scaler")
+        self._scaling_select_combo = DynamicComboBox()
+        self._scaling_select_combo.addItem("None")
+        self._scaling_select_combo.setCurrentIndex(0)
+        self._scaling_select_combo.addItems(Scalers.all_values())
 
-        #histogram group
-        self._hist_data_lb = QLabel("Use column:")
-        self._hist_data = QListWidget()
-        self._hist_data.setSelectionMode(QAbstractItemView.ExtendedSelection)
-        self._hist_color_by_lb = QLabel("Color By:")
-        self._hist_color_by = DynamicComboBox()
-        self._hist_color_by.popup_clicked.connect(self.fill_color_by)
-        self._hist_plot = QPushButton("Plot Histogram")
+        self._scaling_layout = QGridLayout()
+        self._scaling_layout.addWidget(self._scaling_select_lb, 0, 0)
+        self._scaling_layout.addWidget(self._scaling_select_combo, 0, 1)
 
-        self._hist_layout = QGridLayout()
-        self._hist_layout.addWidget(self._hist_data_lb, 0, 0)
-        self._hist_layout.addWidget(self._hist_data, 0, 1)
-        self._hist_layout.addWidget(self._hist_color_by_lb, 1, 0)
-        self._hist_layout.addWidget(self._hist_color_by, 1, 1)
-        self._hist_layout.addWidget(self._hist_plot, 2, 0, 1, 2)
-        self._hist_layout.setAlignment(Qt.AlignTop)
-        self._hist_gb = QGroupBox("Histogram")
-        self._hist_gb.setLayout(self._hist_layout)
+        self._scaling_gb = QGroupBox("Data Scaling")
+        self._scaling_gb.setLayout(self._scaling_layout)
+
+        #predict
+        self._predict_select_lb = QLabel("Select Algorithm")
+        self._predict_select_combo = DynamicComboBox()
+        self._predict_select_combo.popup_clicked.connect(self.fill_predict_combo)
+        self._predict_select_combo.currentTextChanged.connect(self._populate_ml_parameters)
+
+        self._predict_layout = QGridLayout()
+        self._predict_layout.addWidget(self._predict_select_lb, 0, 0)
+        self._predict_layout.addWidget(self._predict_select_combo, 0, 1)
+        self._predict_layout.setAlignment(Qt.AlignTop)
+
+        self._predict_gb = QGroupBox("ML Algorithm")
+        self._predict_gb.setLayout(self._predict_layout)
+
+        #parameters
+        self._param_gscv_lb = QLabel("Enable GridSearchCV")
+        self._param_gscv_cb = QCheckBox()
+        self._param_gscv_cb.setChecked(False)
+        self._param_layout = QGridLayout()
+        self._param_layout.addWidget(self._param_gscv_lb, 0, 0)
+        self._param_layout.addWidget(self._param_gscv_cb, 0, 1)
+
+        self._param_gb = QGroupBox("ML Parameters")
+        self._param_gb.setLayout(self._param_layout)
+
+
+
+
 
         # layout for the whole tab
         self._layout = QGridLayout()
         self._layout.setAlignment(Qt.AlignTop)
-        self._layout.addWidget(self._view_gb, 0, 0)
-        self._layout.addWidget(self._info_gb, 1, 0)
-        self._layout.addWidget(self._hist_gb, 2, 0)
+
+        self._layout.addWidget(self._data_gb, 0, 0)
+        self._layout.addWidget(self._scaling_gb, 1, 0)
+        self._layout.addWidget(self._predict_gb, 2, 0)
+        self._layout.addWidget(self._param_gb, 3, 0)
         self.setLayout(self._layout)
 
         # signal slot connections
-        self._view_table_cb.clicked.connect(self.update_table_widget)
-        self._view_description_cb.clicked.connect(self.update_table_widget)
-        self._hist_plot.clicked.connect(self.plot_histogram)
-        self._info_calculate_btn.clicked.connect(self.calculate_info)
 
-        # keep histogram area grayed out until info stats are calculated
+    def _populate_ml_parameters(self):
+        selected_ml = self._predict_select_combo.currentText()
+        item = self._param_layout.itemAtPosition(1, 0)
+        if item is not None:
+            self._param_layout.removeItem(item)
+            item.widget().hide()
+
+        if selected_ml == MLRegression.KNeighborsRegressor.name or selected_ml == MLClassification.KNeighborsClassifier.name:
+            if MLWidgets.KNeighbors in self._param_widgets.keys():
+                self._param_layout.addWidget(self._param_widgets[MLWidgets.KNeighbors], 1, 0, 1, 2)
+                self._param_widgets[MLWidgets.KNeighbors].show()
+
+            else:
+                self._param_widgets[MLWidgets.KNeighbors] = KNeighborsOptions()
+                self._param_layout.addWidget(self._param_widgets[MLWidgets.KNeighbors], 1, 0, 1, 2)
+        else:
+            self._param_layout.addWidget(QLabel("Oops"), 1, 0, 1, 2)
+
+
+    def fill_predict_combo(self):
+        self._predict_select_combo.clear()
+        if self._data_target_combo.currentText()=='':
+            self._predict_select_combo.addItem("Target must be selected")
+        elif self._data_target_combo.currentText() in self._ds.categorical_columns:
+            self._predict_select_combo.addItems(MLClassification.all_values())
+        else:
+            self._predict_select_combo.addItems(MLRegression.all_values())
+
+    def fill_target_combo(self):
+        self._data_target_combo.clear()
+        item_count = self._data_feature_list.count()
+        for i in range(item_count):
+            item = self._data_feature_list.item(i)
+            if not item.isSelected():
+                self._data_target_combo.addItem(item.text())
 
     def dataset_opened(self, ds, _):
         self.set_plot_generator(ds)
-        self.disable_histogram()
         self._ds_name = ds.name
         self._ds = ds
         self._ds_columns = ds.column_names()
-        self._hist_data.clear()
-        self._hist_color_by.clear()
-        self._hist_color_by.addItem("")
-        self._hist_color_by.setCurrentIndex(0)
-        self._hist_data.addItems(self._ds_columns)
-
-    def disable_histogram(self):
-        self._hist_gb.setDisabled(True)
-
-    def enable_histogram(self):
-        self._hist_gb.setDisabled(False)
+        self._data_feature_list.clear()
+        self._data_target_combo.clear()
+        self._data_target_combo.addItem("")
+        self._data_target_combo.setCurrentIndex(0)
+        self._data_feature_list.addItems(self._ds_columns)
 
     # when checkboxes are clicked, send updates to the TableView
     # I am guessing this should emit a signal which main window should pick up
@@ -186,7 +228,6 @@ class DataAnalysisTab(QWidget):
         self.info_calculated.emit(self._categorical_columns)
 
     def table_edited(self, sender):
-        print(" I changed, sender = {}, {} ={}".format(sender.row(), sender.column(), sender.data(Qt.EditRole)))
         val = sender.data(Qt.EditRole)
         col = self._ds_columns[sender.column()]
         if not val:

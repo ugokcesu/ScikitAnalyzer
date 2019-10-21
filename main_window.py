@@ -40,12 +40,14 @@ class MainWindow(QMainWindow):
 
         self.left_dock.data_load_tab.load_button_connect_to(self.create_table_view)
 
+        self.dataset_opened.connect(self.left_dock.fit_transform_tab.dataset_opened)
         self.dataset_opened.connect(self.left_dock.data_load_tab.dataset_opened)
         self.dataset_opened.connect(self.left_dock.data_analysis_tab.dataset_opened)
         self.dataset_opened.connect(self.left_dock.data_analysis_tab_multi.dataset_opened)
         self.dataset_opened.connect(self.left_dock.data_editing_tab.dataset_opened)
 
         self.dataset_updated.connect(self.disable_window_widgets)
+        self.dataset_updated.connect(self.left_dock.fit_transform_tab.dataset_opened)
         self.dataset_updated.connect(self.left_dock.data_load_tab.dataset_opened)
         self.dataset_updated.connect(self.left_dock.data_analysis_tab.dataset_opened)
         self.dataset_updated.connect(self.left_dock.data_analysis_tab_multi.dataset_opened)
