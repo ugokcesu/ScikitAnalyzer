@@ -1,5 +1,5 @@
-from PyQt5.QtWidgets import QWidget, QLabel, QSpinBox, QGridLayout, QGroupBox, QLineEdit
-
+from PyQt5.QtWidgets import QWidget, QLabel, QSpinBox, QGridLayout, QGroupBox, QLineEdit, QToolTip
+from PyQt5.QtCore import QPoint, QTimer
 import pandas as pd
 
 from scikit_logger import ScikitLogger
@@ -12,7 +12,7 @@ class KNeighborsOptions(QWidget):
         super().__init__(parent)
         self._n_neighbors_lb = QLabel("Number of Neighbors")
         self._n_neighbors_le = QLineEdit()
-
+        self._n_neighbors_le.setToolTip("single number or separated by commas")
         self._options_gb = QGroupBox("Options")
         self._options_layout = QGridLayout()
         self._options_layout.addWidget(self._n_neighbors_lb, 0, 0)
@@ -22,26 +22,34 @@ class KNeighborsOptions(QWidget):
         self._layout.addWidget(self._options_gb)
         self.setLayout(self._layout)
 
+    @staticmethod
+    def point_to_error(widget):
+        widget.setStyleSheet("background-color:pink;")
+        QTimer.singleShot(400, lambda x=widget: x.setStyleSheet("background-color:white;"))
+        QToolTip.showText(widget.mapToGlobal(QPoint(0, 0)), widget.toolTip())
+
     def _validate_parameters(self):
         text = self._n_neighbors_le.text()
         values = text.split(',')
         try:
             numbers = list(map(pd.to_numeric, values))
+            numbers = list(map(int, values))
         except Exception:
             self.logger.exception("n_neighbors must be integer or integers separated by commas")
+            KNeighborsOptions.point_to_error(self._n_neighbors_le)
             return False
         return True
 
     def gather_parameters(self):
         if not self._validate_parameters():
             return None
-
         values = self._n_neighbors_le.text().split(',')
         ints_list = []
         for item in values:
             ints_list.append(int(item))
-            if ints_list[-1] != item:
-                self.logger.error('n_neighbors must be integer(s)')
+            if ints_list[-1] != pd.to_numeric(item):
+                self.logger.error('n_neighbors must be integer or integers separated by commas')
+                KNeighborsOptions.point_to_error(self._n_neighbors_le)
                 return None
         return {'n_neighbors': ints_list}
 

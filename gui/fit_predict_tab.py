@@ -1,15 +1,22 @@
+#import warnings
+
 from PyQt5.QtWidgets import QWidget, QCheckBox, QGridLayout, QLabel, QComboBox, QGroupBox, QPushButton, QVBoxLayout,\
-    QListWidget, QAbstractItemView, QSpinBox
+    QListWidget, QAbstractItemView, QSpinBox, QDoubleSpinBox
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.Qt import QSizePolicy
 
 from gui.table_widget import TableWidgetState, TableWidget
 from gui.dynamic_combobox import DynamicComboBox
 from gui.ml_options.KNeighbors_options import KNeighborsOptions
+from gui.ml_options.SV_options import SVOptions
 
 from plot_generator import PlotGenerator
 
-from ml_choices import Scalers, MLClassification, MLRegression, MLWidgets
+from ml_choices import Scalers, MLClassification, MLRegression, MLWidgets, ml_2_widgets
+from ml_expert import MLExpert
+
+#warnings.simplefilter('ignore', 'DataConversionWarning')
+#warnings.simplefilter('ignore', 'DeprecationWarning')
 
 class FitPredictTab(QWidget):
     request_plot_generation = pyqtSignal(QWidget, str)
@@ -23,7 +30,8 @@ class FitPredictTab(QWidget):
         # this dict will store ml parameters
         # and restore them as needed (instead of generating duplicates
         self._param_widgets = {}
-
+        self._plot_generator = None
+        self._ml_expert = None
         self._ds_name = ""
         self._ds_columns = []
         self._ds = None
@@ -41,6 +49,7 @@ class FitPredictTab(QWidget):
         self._data_target_combo = DynamicComboBox()
 
         self._data_layout = QGridLayout()
+
         self._data_layout.addWidget(self._data_feature_lb, 0, 0)
         self._data_layout.addWidget(self._data_feature_list, 1, 0)
         self._data_layout.addWidget(self._data_target_lb, 0, 1)
@@ -49,6 +58,7 @@ class FitPredictTab(QWidget):
 
         self._data_gb = QGroupBox("Data Selection")
         self._data_gb.setLayout(self._data_layout)
+        self._data_layout.setAlignment(Qt.AlignTop)
 
         # scaling
         self._scaling_select_lb = QLabel("Select Scaler")
@@ -65,7 +75,7 @@ class FitPredictTab(QWidget):
         self._scaling_gb.setLayout(self._scaling_layout)
 
         #predict
-        self._predict_select_lb = QLabel("Select Algorithm")
+        self._predict_select_lb = QLabel("Select Estimator")
         self._predict_select_combo = DynamicComboBox()
         self._predict_select_combo.popup_clicked.connect(self.fill_predict_combo)
         self._predict_select_combo.currentTextChanged.connect(self._populate_ml_parameters)
@@ -75,24 +85,28 @@ class FitPredictTab(QWidget):
         self._predict_layout.addWidget(self._predict_select_combo, 0, 1)
         self._predict_layout.setAlignment(Qt.AlignTop)
 
-        self._predict_gb = QGroupBox("ML Algorithm")
+        self._predict_gb = QGroupBox("Estimator")
         self._predict_gb.setLayout(self._predict_layout)
 
         #parameters
+        self._param_split_lb = QLabel("Test/Train Split Ratio")
+        self._param_split_sp = QDoubleSpinBox()
+        self._param_split_sp.setRange(0, 0.99)
+        self._param_split_sp.setValue(0.25)
         self._param_gscv_lb = QLabel("Enable GridSearchCV")
         self._param_gscv_cb = QCheckBox()
         self._param_gscv_cb.setChecked(False)
         self._param_layout = QGridLayout()
-        self._param_layout.addWidget(self._param_gscv_lb, 0, 0)
-        self._param_layout.addWidget(self._param_gscv_cb, 0, 1)
-
-        self._param_gb = QGroupBox("ML Parameters")
+        self._param_layout.addWidget(self._param_split_lb, 0, 0)
+        self._param_layout.addWidget(self._param_split_sp, 0, 1)
+        self._param_layout.addWidget(self._param_gscv_lb, 1, 0)
+        self._param_layout.addWidget(self._param_gscv_cb, 1, 1)
+        self._param_last_row = 2
+        self._param_gb = QGroupBox("Estimator Parameters")
         self._param_gb.setLayout(self._param_layout)
 
-
-
-
-
+        self._run_btn = QPushButton("Run")
+        self._run_btn.clicked.connect(self._run)
         # layout for the whole tab
         self._layout = QGridLayout()
         self._layout.setAlignment(Qt.AlignTop)
@@ -101,32 +115,74 @@ class FitPredictTab(QWidget):
         self._layout.addWidget(self._scaling_gb, 1, 0)
         self._layout.addWidget(self._predict_gb, 2, 0)
         self._layout.addWidget(self._param_gb, 3, 0)
+        self._layout.addWidget(self._run_btn, 4, 0)
+        self._layout.setAlignment(Qt.AlignTop)
         self.setLayout(self._layout)
 
         # signal slot connections
+    def _run(self):
+        # check columns
+        if (not self._data_feature_list.selectedItems()) or (self._data_target_combo.currentText() == ''):
+            return
+        feature_columns = []
+        for item in self._data_feature_list.selectedItems():
+            feature_columns.append(item.text())
+        target_column = self._data_target_combo.currentText()
+
+        for selected_col in feature_columns + [target_column]:
+            if selected_col not in self._ds_columns:
+                return
+
+        scaler = self._scaling_select_combo.currentText()
+
+        ml = self._predict_select_combo.currentText()
+
+        if ml not in MLClassification.all_values() + MLRegression.all_values():
+            return
+
+        test_ratio = self._param_split_sp.value()
+
+        use_grid_search = self._param_gscv_cb.isChecked()
+
+        if ml_2_widgets(ml) not in self._param_widgets.keys():
+            return
+        parameters = self._param_widgets[ml_2_widgets(ml)].gather_parameters()
+        if parameters is None:
+            return
+
+        X_train, X_test, y_train, y_test = self._ml_expert.data_splitter(ml, test_ratio, feature_columns, target_column)
+        pipeline = self._ml_expert.assemble_pipeline(scaler, ml)
+        grid = self._ml_expert.fit_grid(ml, pipeline, parameters, X_train, y_train)
 
     def _populate_ml_parameters(self):
         selected_ml = self._predict_select_combo.currentText()
-        item = self._param_layout.itemAtPosition(1, 0)
+        item = self._param_layout.itemAtPosition(self._param_last_row, 0)
         if item is not None:
             self._param_layout.removeItem(item)
             item.widget().hide()
 
         if selected_ml == MLRegression.KNeighborsRegressor.name or selected_ml == MLClassification.KNeighborsClassifier.name:
             if MLWidgets.KNeighbors in self._param_widgets.keys():
-                self._param_layout.addWidget(self._param_widgets[MLWidgets.KNeighbors], 1, 0, 1, 2)
+                self._param_layout.addWidget(self._param_widgets[MLWidgets.KNeighbors], self._param_last_row, 0, 1, 2)
                 self._param_widgets[MLWidgets.KNeighbors].show()
 
             else:
                 self._param_widgets[MLWidgets.KNeighbors] = KNeighborsOptions()
-                self._param_layout.addWidget(self._param_widgets[MLWidgets.KNeighbors], 1, 0, 1, 2)
-        else:
-            self._param_layout.addWidget(QLabel("Oops"), 1, 0, 1, 2)
+                self._param_layout.addWidget(self._param_widgets[MLWidgets.KNeighbors], self._param_last_row, 0, 1, 2)
+        elif selected_ml == MLRegression.SVR.name or selected_ml == MLClassification.SVC.name:
+            if MLWidgets.SV in self._param_widgets.keys():
+                self._param_layout.addWidget(self._param_widgets[MLWidgets.SV], self._param_last_row, 0, 1, 2)
+                self._param_widgets[MLWidgets.SV].show()
 
+            else:
+                self._param_widgets[MLWidgets.SV] = SVOptions()
+                self._param_layout.addWidget(self._param_widgets[MLWidgets.SV], self._param_last_row, 0, 1, 2)
+        else:
+            self._param_layout.addWidget(QLabel("Oops"), self._param_last_row, 0, 1, 2)
 
     def fill_predict_combo(self):
         self._predict_select_combo.clear()
-        if self._data_target_combo.currentText()=='':
+        if self._data_target_combo.currentText() == '':
             self._predict_select_combo.addItem("Target must be selected")
         elif self._data_target_combo.currentText() in self._ds.categorical_columns:
             self._predict_select_combo.addItems(MLClassification.all_values())
@@ -143,6 +199,7 @@ class FitPredictTab(QWidget):
 
     def dataset_opened(self, ds, _):
         self.set_plot_generator(ds)
+        self._ml_expert = MLExpert(ds)
         self._ds_name = ds.name
         self._ds = ds
         self._ds_columns = ds.column_names()
@@ -152,103 +209,13 @@ class FitPredictTab(QWidget):
         self._data_target_combo.setCurrentIndex(0)
         self._data_feature_list.addItems(self._ds_columns)
 
-    # when checkboxes are clicked, send updates to the TableView
-    # I am guessing this should emit a signal which main window should pick up
-    def update_table_widget(self):
-        if self._current_table_widget is not None:
-            state = TableWidgetState("dummy", "dummy")
-            state.table_visible = self._view_table_cb.isChecked()
-            state.description_visible = self._view_description_cb.isChecked()
-            try:
-                self._current_table_widget.update_with_state(state)
-            except RuntimeError:
-                self._current_table_widget = None
-                self._current_ds_lb.setText("")
-                self._ds_name = ""
-                self._ds_columns = ""
-                self._hist_plot.setDisabled(True)
+    def set_plot_generator(self, ds):
+        self._plot_generator = PlotGenerator(ds)
 
-    def update_upon_window_activation(self):
-        sender = self.sender()
-        try:
-            widget = sender.activeSubWindow().widget()
-        except AttributeError:
-            # all sub windows have been closed
-            self.setDisabled(True)
-            return
-        if isinstance(widget, TableWidget):
-            self._current_table_widget = widget
-            self.setDisabled(False)
-            self.update_self_with_window_state(self._current_table_widget.window_state)
-            return
-        else:
-            # a plot window was clicked, don't update dock
-            return
 
     # connect to dataLoader tab's close_ds method
     def update_upon_closing_dataset(self):
         self.setDisabled(True)
-        self._hist_color_by.clear()
-        self._hist_data.clear()
         self._ds_columns = []
         self._categorical_columns = []
 
-    # when a new mdi window is selected, set the view checkboxes
-    def update_self_with_window_state(self, state):
-        self._view_table_cb.setChecked(state.table_visible)
-        self._view_description_cb.setChecked(state.description_visible)
-        self._current_ds_lb.setText("Current Dataset: {}".format(state.dataset_name))
-        self._ds_name = state.dataset_name
-        self._ds_columns = state.column_names
-        self._hist_data.clear()
-        self._hist_color_by.clear()
-        self._hist_color_by.addItem("")
-        self._hist_color_by.setCurrentIndex(0)
-        self._hist_data.addItems(self._ds_columns)
-        self._hist_data.setSizeAdjustPolicy(QListWidget.AdjustToContents)
-        self._hist_data.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.MinimumExpanding)
-        self._hist_color_by.addItems(self._ds_columns)
-        self._hist_plot.setDisabled(False)
-
-    def plot_histogram(self):
-        window = self._plot_generator.generate_histogram(self._hist_data.selectedItems(), self._hist_color_by.currentText())
-        self.request_plot_generation.emit(window, "Histogram Window")
-
-    def calculate_info(self):
-        conv = self._info_convert_to_int_cb.isChecked()
-        cat = self._info_cat_limit_sb.value()
-        window, self._categorical_df = self._plot_generator.info(convert=conv, cat_limit=cat)
-        self.request_plot_generation.emit(window, "Info Stats")
-        window.model().itemChanged.connect(self.table_edited)
-        self._categorical_columns = []
-        for index, col in enumerate(self._ds_columns):
-            if self._categorical_df[index]:
-                self._categorical_columns.append(col)
-        self.enable_histogram()
-        self.info_calculated.emit(self._categorical_columns)
-
-    def table_edited(self, sender):
-        val = sender.data(Qt.EditRole)
-        col = self._ds_columns[sender.column()]
-        if not val:
-            try:
-                self._categorical_columns.remove(col)
-            except ValueError:
-                # modified column was already not a part of categoricals
-                pass
-        if val:
-            if col not in self._categorical_columns:
-                self._categorical_columns.append(col)
-        self._ds.categorical_columns = self._categorical_columns
-    def set_plot_generator(self, ds):
-        self._plot_generator = PlotGenerator(ds)
-
-    def fill_color_by(self):
-        self._hist_color_by.clear()
-        self._hist_color_by.addItem("")
-        self._hist_color_by.setCurrentIndex(0)
-        self._hist_color_by.addItems(self._categorical_columns)
-# plot_window = PlotWindow(self)
-#         hist1 = plot_window.figure.add_subplot(111)
-#         hist1.hist([2, 23, 4, 5, 6, 6, 6, 4, 3, 3, 2, 1])
-#         self._plot_layout.addWidget(plot_window)
