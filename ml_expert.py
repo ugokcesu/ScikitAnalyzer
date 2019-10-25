@@ -1,13 +1,9 @@
-
-
 from sklearn.model_selection import train_test_split
 from sklearn.svm import SVR, SVC
 from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
 from sklearn.preprocessing import MinMaxScaler, RobustScaler
 from sklearn.pipeline import Pipeline
 from sklearn.model_selection import GridSearchCV
-
-import pandas as pd
 
 from ml_choices import MLRegression, MLClassification, Scalers
 from scikit_logger import ScikitLogger

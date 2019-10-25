@@ -4,6 +4,7 @@ import pandas as pd
 
 from scikit_logger import ScikitLogger
 
+from gui.gui_helper import GuiHelper
 
 class KNeighborsOptions(QWidget):
     logger = ScikitLogger()
@@ -22,12 +23,6 @@ class KNeighborsOptions(QWidget):
         self._layout.addWidget(self._options_gb)
         self.setLayout(self._layout)
 
-    @staticmethod
-    def point_to_error(widget):
-        widget.setStyleSheet("background-color:pink;")
-        QTimer.singleShot(400, lambda x=widget: x.setStyleSheet("background-color:white;"))
-        QToolTip.showText(widget.mapToGlobal(QPoint(0, 0)), widget.toolTip())
-
     def _validate_parameters(self):
         text = self._n_neighbors_le.text()
         values = text.split(',')
@@ -36,7 +31,7 @@ class KNeighborsOptions(QWidget):
             numbers = list(map(int, values))
         except Exception:
             self.logger.exception("n_neighbors must be integer or integers separated by commas")
-            KNeighborsOptions.point_to_error(self._n_neighbors_le)
+            GuiHelper.point_to_error(self._n_neighbors_le)
             return False
         return True
 
@@ -49,7 +44,7 @@ class KNeighborsOptions(QWidget):
             ints_list.append(int(item))
             if ints_list[-1] != pd.to_numeric(item):
                 self.logger.error('n_neighbors must be integer or integers separated by commas')
-                KNeighborsOptions.point_to_error(self._n_neighbors_le)
+                GuiHelper.point_to_error(self._n_neighbors_le)
                 return None
         return {'n_neighbors': ints_list}
 

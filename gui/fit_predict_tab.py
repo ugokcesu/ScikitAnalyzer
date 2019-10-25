@@ -1,22 +1,21 @@
 #import warnings
 
 from PyQt5.QtWidgets import QWidget, QCheckBox, QGridLayout, QLabel, QComboBox, QGroupBox, QPushButton, QVBoxLayout,\
-    QListWidget, QAbstractItemView, QSpinBox, QDoubleSpinBox
-from PyQt5.QtCore import Qt, pyqtSignal
+    QListWidget, QAbstractItemView, QSpinBox, QDoubleSpinBox, QToolTip
+from PyQt5.QtCore import Qt, pyqtSignal, QPoint, QTimer
 from PyQt5.Qt import QSizePolicy
 
 from gui.table_widget import TableWidgetState, TableWidget
 from gui.dynamic_combobox import DynamicComboBox
 from gui.ml_options.KNeighbors_options import KNeighborsOptions
 from gui.ml_options.SV_options import SVOptions
-
+from gui.gui_helper import GuiHelper
 from plot_generator import PlotGenerator
 
 from ml_choices import Scalers, MLClassification, MLRegression, MLWidgets, ml_2_widgets
 from ml_expert import MLExpert
+from ml_plotter import MLPlotter
 
-#warnings.simplefilter('ignore', 'DataConversionWarning')
-#warnings.simplefilter('ignore', 'DeprecationWarning')
 
 class FitPredictTab(QWidget):
     request_plot_generation = pyqtSignal(QWidget, str)
@@ -32,6 +31,7 @@ class FitPredictTab(QWidget):
         self._param_widgets = {}
         self._plot_generator = None
         self._ml_expert = None
+        self._ml_plotter = MLPlotter()
         self._ds_name = ""
         self._ds_columns = []
         self._ds = None
@@ -44,9 +44,11 @@ class FitPredictTab(QWidget):
         # data selection
         self._data_feature_lb = QLabel("Select Features")
         self._data_feature_list = QListWidget()
+        self._data_feature_list.setToolTip("At least 1 feature needed for running estimator")
         self._data_feature_list.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self._data_target_lb = QLabel("Select Target")
         self._data_target_combo = DynamicComboBox()
+        self._data_target_combo.setToolTip("One column must be selected as target for running estimator")
 
         self._data_layout = QGridLayout()
 
@@ -64,9 +66,8 @@ class FitPredictTab(QWidget):
         self._scaling_select_lb = QLabel("Select Scaler")
         self._scaling_select_combo = DynamicComboBox()
         self._scaling_select_combo.addItem("None")
-        self._scaling_select_combo.setCurrentIndex(0)
         self._scaling_select_combo.addItems(Scalers.all_values())
-
+        self._scaling_select_combo.setCurrentIndex(0)
         self._scaling_layout = QGridLayout()
         self._scaling_layout.addWidget(self._scaling_select_lb, 0, 0)
         self._scaling_layout.addWidget(self._scaling_select_combo, 0, 1)
@@ -77,6 +78,7 @@ class FitPredictTab(QWidget):
         #predict
         self._predict_select_lb = QLabel("Select Estimator")
         self._predict_select_combo = DynamicComboBox()
+        self._predict_select_combo.setToolTip("An estimator must be selected to run")
         self._predict_select_combo.popup_clicked.connect(self.fill_predict_combo)
         self._predict_select_combo.currentTextChanged.connect(self._populate_ml_parameters)
 
@@ -122,7 +124,11 @@ class FitPredictTab(QWidget):
         # signal slot connections
     def _run(self):
         # check columns
-        if (not self._data_feature_list.selectedItems()) or (self._data_target_combo.currentText() == ''):
+        if not self._data_feature_list.selectedItems():
+            GuiHelper.point_to_error(self._data_feature_list)
+            return
+        if self._data_target_combo.currentText() == '':
+            GuiHelper.point_to_error(self._data_target_combo)
             return
         feature_columns = []
         for item in self._data_feature_list.selectedItems():
@@ -131,13 +137,14 @@ class FitPredictTab(QWidget):
 
         for selected_col in feature_columns + [target_column]:
             if selected_col not in self._ds_columns:
-                return
+                raise KeyError
 
         scaler = self._scaling_select_combo.currentText()
 
         ml = self._predict_select_combo.currentText()
 
         if ml not in MLClassification.all_values() + MLRegression.all_values():
+            GuiHelper.point_to_error(self._predict_select_combo)
             return
 
         test_ratio = self._param_split_sp.value()
@@ -153,6 +160,8 @@ class FitPredictTab(QWidget):
         X_train, X_test, y_train, y_test = self._ml_expert.data_splitter(ml, test_ratio, feature_columns, target_column)
         pipeline = self._ml_expert.assemble_pipeline(scaler, ml)
         grid = self._ml_expert.fit_grid(ml, pipeline, parameters, X_train, y_train)
+        window = self._ml_plotter.plot_grid_results(grid, X_test, y_test)
+        self.request_plot_generation.emit(window, "GridSearch Results")
 
     def _populate_ml_parameters(self):
         selected_ml = self._predict_select_combo.currentText()
@@ -188,6 +197,7 @@ class FitPredictTab(QWidget):
             self._predict_select_combo.addItems(MLClassification.all_values())
         else:
             self._predict_select_combo.addItems(MLRegression.all_values())
+        self._predict_select_combo.setCurrentIndex(0)
 
     def fill_target_combo(self):
         self._data_target_combo.clear()

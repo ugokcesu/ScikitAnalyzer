@@ -14,7 +14,7 @@ class PlotWindow(QWidget):
                 super().__init__(parent)
                 # self.setWindowTitle("Plotting Window")
                 # self.setFixedSize(self.length, height)
-                self.setFixedSize(6*self.physicalDpiX(), 3 * self.physicalDpiY())
+                self.setFixedSize(6*self.physicalDpiX(), height * self.physicalDpiY())
                 self.figure = plt.figure()
 
                 self.canvas = FigureCanvas(self.figure)

@@ -4,6 +4,7 @@ import pandas as pd
 
 from scikit_logger import ScikitLogger
 
+from gui.gui_helper import GuiHelper
 
 class SVOptions(QWidget):
     logger = ScikitLogger()
@@ -35,6 +36,7 @@ class SVOptions(QWidget):
             numbers = list(map(pd.to_numeric, values))
         except Exception:
             self.logger.exception("{} must be floats or floats separated by commas".format(widget.objectName()))
+            SVOptions.point_to_error(widget)
             return False
         return True
 
@@ -47,23 +49,17 @@ class SVOptions(QWidget):
             gamma_list = list(map(float, gamma_values))
         except ValueError:
             self.logger.exception('Cannot convert input to float')
-            SVOptions.point_to_error(self._gamma_le)
+            GuiHelper.point_to_error(self._gamma_le)
             return None
         c_values = self._c_le.text().split(',')
         try:
             c_list = list(map(float, c_values))
         except ValueError:
             self.logger.exception('Cannot convert input to float')
-            SVOptions.point_to_error(self._c_le)
+            GuiHelper.point_to_error(self._c_le)
             return None
         return {'C': c_list, 'gamma': gamma_list}
 
     @property
     def name(self):
         return "SV"
-
-    @staticmethod
-    def point_to_error(widget):
-        widget.setStyleSheet("background-color:pink;")
-        QTimer.singleShot(400, lambda x=widget: x.setStyleSheet("background-color:white;"))
-        QToolTip.showText(widget.mapToGlobal(QPoint(0, 0)), widget.toolTip())
