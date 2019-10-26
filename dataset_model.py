@@ -12,7 +12,6 @@ class DatasetModel(QtGui.QStandardItemModel):
             return
         for index, row in enumerate(self._data.values.tolist()):
             data_row = []
-
             for x in row:
                 if isinstance(x, float):
                     item = QtGui.QStandardItem()
@@ -30,7 +29,6 @@ class DatasetModel(QtGui.QStandardItemModel):
                 else:
                     data_row.append(QtGui.QStandardItem(str(x)))
             self.appendRow(data_row)
-
         return
 
     def rowCount(self, parent=None):

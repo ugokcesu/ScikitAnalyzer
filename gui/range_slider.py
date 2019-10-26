@@ -32,7 +32,7 @@ QRangeSlider > QSplitter::handle:pressed {
 """
 
 def scale(val, src, dst):
-    return int(((val - src[0]) / float(src[1]-src[0])) * (dst[1]-dst[0]) + dst[0])
+    return round(float(((val - src[0]) / float(src[1]-src[0])) * (dst[1]-dst[0]) + dst[0]), 2)
 
 
 class Ui_Form(object):
@@ -198,10 +198,12 @@ class QRangeSlider(QtWidgets.QWidget, Ui_Form):
         return getattr(self, '__max', None)
 
     def setMin(self, value):
+        value = round(value,2)
         setattr(self, '__min', value)
         self.minValueChanged.emit(value)
 
     def setMax(self, value):
+        value = round(value, 2)
         setattr(self, '__max', value)
         self.maxValueChanged.emit(value)
 
@@ -216,6 +218,7 @@ class QRangeSlider(QtWidgets.QWidget, Ui_Form):
         self.startValueChanged.emit(value)
 
     def setStart(self, value):
+        value = round(value, 2)
         v = self._valueToPos(value)
         self._splitter.splitterMoved.disconnect()
         self._splitter.moveSplitter(v, self._SPLIT_START)
@@ -227,6 +230,7 @@ class QRangeSlider(QtWidgets.QWidget, Ui_Form):
         self.endValueChanged.emit(value)
 
     def setEnd(self, value):
+        value = round(value, 2)
         v = self._valueToPos(value)
         self._splitter.splitterMoved.disconnect()
         self._splitter.moveSplitter(v, self._SPLIT_END)
@@ -312,7 +316,7 @@ if __name__ == '__main__':
     rs = QRangeSlider()
     rs.show()
     rs.setFixedWidth(700)
-    e = 5
+    e = 0.5
     rs.setMax(e*2)
     rs.setRange(0, e)
     rs.setBackgroundStyle('background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #222, stop:1 #333);')

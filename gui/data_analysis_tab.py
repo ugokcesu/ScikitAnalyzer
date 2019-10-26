@@ -186,7 +186,7 @@ class DataAnalysisTab(QWidget):
         self.info_calculated.emit(self._categorical_columns)
 
     def table_edited(self, sender):
-        print(" I changed, sender = {}, {} ={}".format(sender.row(), sender.column(), sender.data(Qt.EditRole)))
+        # print(" I changed, sender = {}, {} ={}".format(sender.row(), sender.column(), sender.data(Qt.EditRole)))
         val = sender.data(Qt.EditRole)
         col = self._ds_columns[sender.column()]
         if not val:
