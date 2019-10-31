@@ -20,6 +20,7 @@ class DataEditingTab(QWidget):
         self._current_table_widget = None
         self._current_df = None
         self._categorical_df = None
+        self._current_ds = None
         self._categorical_columns = []
 
         self.drop_btn = QPushButton("Drop Selected Columns")
@@ -39,7 +40,6 @@ class DataEditingTab(QWidget):
         cols, axis = self.get_table_selection()
         column_names = self.current_df.columns[cols]
         df = pd.get_dummies(self.current_df, columns=column_names)
-        print(self.current_df)
         # connects to when data is loaded, after QTableview is created in main window
         self.df_changed.emit(df)
 
@@ -47,15 +47,15 @@ class DataEditingTab(QWidget):
     def drop_columns(self):
         cols, axis = self.get_table_selection()
         column_names = self.current_df.columns[cols]
-        self.current_df.drop(column_names, axis=axis, inplace=True)
+        df = self.current_df.drop(column_names, axis=axis)
+
         #connects to when data is loaded, after QTableview is created in main window
-        self.table_changed.emit()
+        self.df_changed.emit(df)
 
     def get_table_selection(self):
         selection = self.current_table_widget.data_table.selectionModel()
         columns = [x.column() for x in selection.selectedColumns()]
         return columns, 1
-
 
     @property
     def current_table_widget(self):
@@ -65,8 +65,11 @@ class DataEditingTab(QWidget):
     def current_table_widget(self, widget):
         self._current_table_widget = widget
 
-    def dataset_opened(self, ds, table_widget):
-        self.current_table_widget = table_widget
-        self.current_df = ds.df
+    def dataset_opened(self, ds=None, table_widget=None):
+        if table_widget:
+            self.current_table_widget = table_widget
+        if ds:
+            self._current_ds = ds
+            self.current_df = ds.df
 
 

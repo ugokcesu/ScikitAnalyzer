@@ -1,5 +1,6 @@
 import sklearn
 import pandas as pd
+import numpy as np
 
 
 class Dataset:
@@ -29,6 +30,24 @@ class Dataset:
 
         self._info_df = None
         self._categorical_columns = []
+        self._numerical_columns = []
+        self.update_numericals()
+
+    def update_numericals(self):
+        self._numerical_columns = []
+        for col in self.column_names():
+            if np.issubdtype(self._df[col].dtype, np.number):
+                self._numerical_columns.append(col)
+
+    def update_categoricals(self):
+        cats = self._categorical_columns
+        for cat in cats:
+            if cat not in self.column_names():
+                self._categorical_columns.remove(cat)
+
+    @property
+    def numerical_columns(self):
+        return self._numerical_columns
 
     @property
     def categorical_columns(self):
@@ -55,7 +74,8 @@ class Dataset:
     @df.setter
     def df(self, df):
         self._df = df
-
+        self.update_categoricals()
+        self.update_numericals()
 
     @property
     def name(self):

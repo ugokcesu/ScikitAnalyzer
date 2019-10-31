@@ -3,6 +3,8 @@ from PyQt5.QtWidgets import QWidget, QCheckBox, QGridLayout, QLabel, QComboBox, 
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.Qt import QSizePolicy
 
+import numpy as np
+
 from gui.table_widget import TableWidgetState, TableWidget
 from gui.dynamic_combobox import DynamicComboBox
 from plot_generator import PlotGenerator
@@ -24,6 +26,7 @@ class DataAnalysisTab(QWidget):
         self._current_dataset = None
         self._categorical_df = None
         self._categorical_columns = []
+        self._numerical_columns = []
         self._plot_generator = None
 
         # viewing options widgets and layout
@@ -43,7 +46,8 @@ class DataAnalysisTab(QWidget):
         # info statistics
         self._info_calculate_btn = QPushButton("Calculate Info")
         self._info_convert_to_int_cb = QCheckBox("Convert to int if possible")
-        self._info_convert_to_int_cb.setChecked(True)
+        self._info_convert_to_int_cb.setChecked(False)
+        self._info_convert_to_int_cb.hide()
         self._info_categorical_limit_lb = QLabel("Max unique values for categoricals")
         self._info_cat_limit_sb = QSpinBox()
         self._info_cat_limit_sb.setValue(5)
@@ -92,17 +96,20 @@ class DataAnalysisTab(QWidget):
 
         # keep histogram area grayed out until info stats are calculated
 
-    def dataset_opened(self, ds, _):
-        self.set_plot_generator(ds)
+    def dataset_opened(self, ds=None, _=None):
+        #set new ds if needed, otherwise just reread columns from old
+        if ds:
+            self._ds = ds
+        self.set_plot_generator(self._ds)
         self.disable_histogram()
-        self._ds_name = ds.name
-        self._ds = ds
-        self._ds_columns = ds.column_names()
+        self._ds_name = self._ds.name
+        self._ds_columns = self._ds.column_names()
+        self._numerical_columns = self._ds.numerical_columns
         self._hist_data.clear()
         self._hist_color_by.clear()
         self._hist_color_by.addItem("")
         self._hist_color_by.setCurrentIndex(0)
-        self._hist_data.addItems(self._ds_columns)
+        self._hist_data.addItems(self._numerical_columns)
 
     def disable_histogram(self):
         self._hist_gb.setDisabled(True)
@@ -162,7 +169,7 @@ class DataAnalysisTab(QWidget):
         self._hist_color_by.clear()
         self._hist_color_by.addItem("")
         self._hist_color_by.setCurrentIndex(0)
-        self._hist_data.addItems(self._ds_columns)
+        self._hist_data.addItems(self._numerical_columns)
         self._hist_data.setSizeAdjustPolicy(QListWidget.AdjustToContents)
         self._hist_data.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.MinimumExpanding)
         self._hist_color_by.addItems(self._ds_columns)
@@ -185,6 +192,7 @@ class DataAnalysisTab(QWidget):
         self.enable_histogram()
         self.info_calculated.emit(self._categorical_columns)
 
+
     def table_edited(self, sender):
         # print(" I changed, sender = {}, {} ={}".format(sender.row(), sender.column(), sender.data(Qt.EditRole)))
         val = sender.data(Qt.EditRole)
@@ -199,6 +207,7 @@ class DataAnalysisTab(QWidget):
             if col not in self._categorical_columns:
                 self._categorical_columns.append(col)
         self._ds.categorical_columns = self._categorical_columns
+
     def set_plot_generator(self, ds):
         self._plot_generator = PlotGenerator(ds)
 

@@ -207,12 +207,15 @@ class FitPredictTab(QWidget):
             if not item.isSelected():
                 self._data_target_combo.addItem(item.text())
 
-    def dataset_opened(self, ds, _):
-        self.set_plot_generator(ds)
-        self._ml_expert = MLExpert(ds)
-        self._ds_name = ds.name
-        self._ds = ds
-        self._ds_columns = ds.column_names()
+    def dataset_opened(self, ds=None, _=None):
+        if ds:
+            self._ds = ds
+        if not self._ds:
+            raise TypeError
+        self.set_plot_generator(self._ds)
+        self._ml_expert = MLExpert(self._ds)
+        self._ds_name = self._ds.name
+        self._ds_columns = self._ds.column_names()
         self._data_feature_list.clear()
         self._data_target_combo.clear()
         self._data_target_combo.addItem("")
@@ -221,7 +224,6 @@ class FitPredictTab(QWidget):
 
     def set_plot_generator(self, ds):
         self._plot_generator = PlotGenerator(ds)
-
 
     # connect to dataLoader tab's close_ds method
     def update_upon_closing_dataset(self):

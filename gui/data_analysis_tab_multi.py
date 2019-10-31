@@ -13,6 +13,7 @@ from plot_generator import PlotGenerator
 
 class DataAnalysisTabMulti(QWidget):
     request_plot_generation = pyqtSignal(QWidget, str)
+    mask_created_from_xplot = pyqtSignal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -28,13 +29,11 @@ class DataAnalysisTabMulti(QWidget):
         self._categorical_columns = []
         self._plot_generator = None
 
-
-
         # correlation matrix
         self.correlation_btn = QPushButton("Calculate Correlation")
         self.sort_by_lb = QLabel("Sort By:")
         self.sort_by = DynamicComboBox()
-        self.sort_by.popup_clicked.connect(self.fill_combobox)
+        #self.fill_combobox(self.sort_by)
 
         self._corr_layout = QGridLayout()
         self._corr_layout.addWidget(self.correlation_btn, 0, 0, 1, 2)
@@ -78,51 +77,20 @@ class DataAnalysisTabMulti(QWidget):
         self._hist_btn.clicked.connect(self.hist2d)
         self._hist_xplot_btn.clicked.connect(self.xplot)
 
-    def dataset_opened(self, ds, _):
-        self.set_plot_generator(ds)
-        self._ds_name = ds.name
-        self._ds = ds
-        self._ds_columns = ds.column_names()
+    def dataset_opened(self, ds=None, _=None):
+        if ds:
+            self._ds = ds
+        self._ds_name = self._ds.name
+        self._ds_columns = self._ds.column_names()
+        self.set_plot_generator(self._ds)
         self.sort_by.clear()
         self.sort_by.addItem("")
         self.sort_by.setCurrentIndex(0)
         self._hist_X.clear()
-        self._hist_X.addItems(ds.column_names())
+        self._hist_X.addItems(self._ds.numerical_columns)
         self._hist_Y.clear()
-        self._hist_Y.addItems(ds.column_names())
-
-    # when checkboxes are clicked, send updates to the TableView
-    # I am guessing this should emit a signal which main window should pick up
-    def update_table_widget(self):
-        if self._current_table_widget is not None:
-            state = TableWidgetState("dummy", "dummy")
-            state.table_visible = self._view_table_cb.isChecked()
-            state.description_visible = self._view_description_cb.isChecked()
-            try:
-                self._current_table_widget.update_with_state(state)
-            except RuntimeError:
-                self._current_table_widget = None
-                self._current_ds_lb.setText("")
-                self._ds_name = ""
-                self._ds_columns = ""
-                self._hist_plot.setDisabled(True)
-
-    def update_upon_window_activation(self):
-        sender = self.sender()
-        try:
-            widget = sender.activeSubWindow().widget()
-        except AttributeError:
-            # all sub windows have been closed
-            self.setDisabled(True)
-            return
-        if isinstance(widget, TableWidget):
-            self._current_table_widget = widget
-            self.setDisabled(False)
-            self.update_self_with_window_state(self._current_table_widget.window_state)
-            return
-        else:
-            # a plot window was clicked, don't update dock
-            return
+        self._hist_Y.addItems(self._ds.numerical_columns)
+        self.fill_combobox(self.sort_by)
 
     # connect to dataLoader tab's close_ds method
     def update_upon_closing_dataset(self):
@@ -132,23 +100,6 @@ class DataAnalysisTabMulti(QWidget):
         self._hist_Y.clear()
         self._ds_columns = []
         self._categorical_columns = []
-
-    # when a new mdi window is selected, set the view checkboxes
-    def update_self_with_window_state(self, state):
-        self._view_table_cb.setChecked(state.table_visible)
-        self._view_description_cb.setChecked(state.description_visible)
-        self._current_ds_lb.setText("Current Dataset: {}".format(state.dataset_name))
-        self._ds_name = state.dataset_name
-        self._ds_columns = state.column_names
-        self._hist_data.clear()
-        self.sort_by.clear()
-        self.sort_by.addItem("")
-        self.sort_by.setCurrentIndex(0)
-        self._hist_data.addItems(self._ds_columns)
-        self._hist_data.setSizeAdjustPolicy(QListWidget.AdjustToContents)
-        self._hist_data.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.MinimumExpanding)
-        self.sort_by.addItems(self._ds_columns)
-        self._hist_plot.setDisabled(False)
 
     def correlation_matrix(self):
         sort_key = self.sort_by.currentText()
@@ -169,13 +120,15 @@ class DataAnalysisTabMulti(QWidget):
 
     def set_plot_generator(self, ds):
         self._plot_generator = PlotGenerator(ds)
+        self._plot_generator.mask_created_from_xplot.connect(self.mask_created_from_xplot.emit)
 
-    def fill_combobox(self):
-        combobox = self.sender()
+    def fill_combobox(self, combobox):
+        if not isinstance(combobox, DynamicComboBox):
+            return
         combobox.clear()
         combobox.addItem("")
         combobox.setCurrentIndex(0)
-        combobox.addItems(self._ds.column_names())
+        combobox.addItems(self._ds.numerical_columns)
 
 # plot_window = PlotWindow(self)
 #         hist1 = plot_window.figure.add_subplot(111)

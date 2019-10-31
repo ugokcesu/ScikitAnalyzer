@@ -57,7 +57,6 @@ class DataLoaderTab(QWidget):
         for ds in sklearn.datasets.__all__:
             if ds.startswith(self._prefix):
                 datasets.append(ds[len(self._prefix):])
-        print(datasets)
         return datasets
 
     # slot to be connected to main_window's create_table_view method
@@ -67,9 +66,8 @@ class DataLoaderTab(QWidget):
         self._close_btn.setDisabled(False)
         self._is_a_ds_loaded = True
 
-
     def close_ds(self):
-        choice = QMessageBox.question(self, "Close Dataset?", "Closing dataset will delete all windows. Continue?", \
+        choice = QMessageBox.question(self, "Close Dataset?", "Closing dataset will delete all windows. Continue?",
                                       QMessageBox.Yes | QMessageBox.No)
         if choice == QMessageBox.Yes:
             self.close_dataset.emit()

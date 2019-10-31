@@ -2,4 +2,4 @@ matplotlib==3.0.2
 numpy==1.15.4
 pandas==0.23.4
 scikit-learn==0.20.1
-pyqt==5.9.2
+PyQt==5.9.2

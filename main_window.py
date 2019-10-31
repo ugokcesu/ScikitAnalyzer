@@ -18,6 +18,7 @@ from gui.dynamic_combobox import DynamicComboBox
 class MainWindow(QMainWindow):
     dataset_opened = pyqtSignal(Dataset, TableWidget)
     dataset_updated = pyqtSignal(Dataset, TableWidget)
+    dataset_appended = pyqtSignal()
 
     def __init__(self):
         super().__init__()
@@ -38,28 +39,25 @@ class MainWindow(QMainWindow):
 
         #CONNECTIONS
 
+        # signals from dock, related to dataset updates
         self.left_dock.data_load_tab.load_button_connect_to(self.create_table_view)
+        self.left_dock.mask_created_from_xplot.connect(self.append_table)
 
-        self.dataset_opened.connect(self.left_dock.fit_predict_tab.dataset_opened)
-        self.dataset_opened.connect(self.left_dock.data_load_tab.dataset_opened)
-        self.dataset_opened.connect(self.left_dock.data_analysis_tab.dataset_opened)
-        self.dataset_opened.connect(self.left_dock.data_analysis_tab_multi.dataset_opened)
-        self.dataset_opened.connect(self.left_dock.data_editing_tab.dataset_opened)
+        # outgoing signals related to dataset updated
+        self.dataset_opened.connect(self.left_dock.dataset_opened.emit)
 
         self.dataset_updated.connect(self.disable_window_widgets)
-        self.dataset_updated.connect(self.left_dock.fit_predict_tab.dataset_opened)
-        self.dataset_updated.connect(self.left_dock.data_load_tab.dataset_opened)
-        self.dataset_updated.connect(self.left_dock.data_analysis_tab.dataset_opened)
-        self.dataset_updated.connect(self.left_dock.data_analysis_tab_multi.dataset_opened)
-        self.dataset_updated.connect(self.left_dock.data_editing_tab.dataset_opened)
+        self.dataset_updated.connect(self.left_dock.dataset_opened.emit)
+
+        self.dataset_appended.connect(self.left_dock.dataset_appended.emit)
 
         self.left_dock.data_load_tab.close_dataset.connect(self.mdi_area.closeAllSubWindows)
         self.left_dock.data_load_tab.close_dataset.connect(self.remove_current_dataset)
+
         self.left_dock.data_analysis_tab.request_plot_generation.connect(self.generate_plot_mdi)
         self.left_dock.data_analysis_tab_multi.request_plot_generation.connect(self.generate_plot_mdi)
         self.left_dock.fit_predict_tab.request_plot_generation.connect(self.generate_plot_mdi)
         self.left_dock.data_analysis_tab.info_calculated.connect(self.set_categoricals)
-
 
         # Toolbars
         self.view_toolbar = self.addToolBar("View Toolbar")
@@ -69,15 +67,24 @@ class MainWindow(QMainWindow):
         self.cascade_action.triggered.connect(self.mdi_area.cascadeSubWindows)
         self.open_table_action = QAction("Open Table Window")
         self.open_table_action.triggered.connect(self.re_open_table_window)
+        self.close_all_action = QAction("Close All")
+        self.close_all_action.triggered.connect(self.close_all)
         self.view_toolbar.addAction(self.tile_action)
         self.view_toolbar.addAction(self.cascade_action)
         self.view_toolbar.addAction(self.open_table_action)
+        self.view_toolbar.addAction(self.close_all_action)
+
+    def close_all(self):
+        for window in self.mdi_area.subWindowList():
+            window.close()
 
     def set_categoricals(self, cats):
         self.current_ds._categorical_columns = cats
 
     def update_categoricals(self, cat):
-        if not cat in self.current_ds.categorical_columns:
+        if cat not in self.current_ds.column_names():
+            return
+        if cat not in self.current_ds.categorical_columns:
             self.current_ds.categorical_columns.append(cat)
 
     def generate_plot_mdi(self, window, title):
@@ -134,29 +141,36 @@ class MainWindow(QMainWindow):
         if self.table_sub_window is not None:
             self.table_sub_window.show()
 
+    # new column was added (existing was not deleted/modified)
+    # widgets in windows do not need to be disabled
+    def append_table(self, name):
+        self.table_sub_window.table_widget.update_with_ds(self.dataset_dictionary[self._current_dataset_name])
+        self.update_categoricals(name)
+        self.dataset_appended.emit()
+
     def update_table(self):
         self.table_sub_window.table_widget.update_with_ds(self.dataset_dictionary[self._current_dataset_name])
         self.dataset_updated.emit(self.dataset_dictionary[self._current_dataset_name], self.table_sub_window.table_widget)
 
-    #This is needed when the operation is not inplace=True, and a new copy of ds needs to be sent to main window
+    # This is needed when the operation is not inplace=True, and a new copy of ds needs to be sent to main window
     def update_df(self, df):
         self.dataset_dictionary[self._current_dataset_name].df = df
         self.update_table()
 
+    # connected to dataset_updated
     def disable_window_widgets(self, ds, _):
         for sub in self.mdi_area.subWindowList():
-            print(sub.windowTitle())
             if sub.windowTitle() == "XPlot Window":
                 for child in sub.findChildren(QWidget):
-                    if isinstance(child, QRangeSlider) or isinstance(child, QPushButton) or\
-                        isinstance(child, QCheckBox) or isinstance(child, DynamicComboBox):
+                    if isinstance(child, QRangeSlider) or isinstance(child, QPushButton) or \
+                            isinstance(child, QCheckBox) or isinstance(child, DynamicComboBox):
                         child.setDisabled(True)
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-
     form = MainWindow()
-    form.setWindowTitle("Dataset Analyzer")
+    form.setWindowTitle("Data Analyzer")
     app.setWindowIcon(QIcon("icons/scikit.png"))
     form.show()
     app.exec_()

@@ -22,6 +22,7 @@ from gui.xplot_window_collection import XPlotWindowCollection
 class PlotGenerator(QObject):
     columns_sent = pyqtSignal(str, object)
     data_sent = pyqtSignal(np.ndarray, float, float) # rgb array, min, max
+    mask_created_from_xplot = pyqtSignal(str)
 
     def __init__(self, ds: Dataset):
         super().__init__()
@@ -68,7 +69,6 @@ class PlotGenerator(QObject):
                 plt.xlabel(feature_name)
                 hist1.legend()
                 dispersion = self.dispersion(hist_data)
-                print(dispersion)
                 dispersion_label = "Dispersion % :\n"
                 for i, name in enumerate(unique_names):
                     dispersion_label += "{} : {:.2f}%\n".format(name, dispersion[i]*100)
@@ -111,7 +111,7 @@ class PlotGenerator(QObject):
     # like other plots, generate_xplot, generates the window containing plots
     # unlike other plots, it passes the dataset to the window so later the window updates/redraws its own plots
     # is that ok?
-    def generate_xplot(self, x_props, y_props):
+    def generate_xplot(self, x_props, y_props, alpha=1):
         container_widget = QWidget()
         container_layout = QGridLayout()
         container_widget.setLayout(container_layout)
@@ -123,32 +123,38 @@ class PlotGenerator(QObject):
         super_container.setLayout(super_layout)
 
         xplot_window_collection = XPlotWindowCollection(self.ds, x_props, y_props)
-
-        for i, out_prop in enumerate(x_props):
-            for j, in_prop in enumerate(y_props):
+        xplot_window_collection.mask_created_from_xplot.connect(self.mask_created_from_xplot.emit)
+        x_props_str = [x.data(0) for x in x_props]
+        y_props_str = [y.data(0) for y in y_props]
+        plotted_so_far = []
+        for i, out_prop in enumerate(x_props_str):
+            for j, in_prop in enumerate(y_props_str):
+                if (in_prop, out_prop) in plotted_so_far or out_prop == in_prop:
+                    continue
                 plot_window = PlotWindow()
                 xplot_window_collection.windows[j][i] = plot_window
                 ax = plot_window.figure.add_subplot(1, 1, 1)
                 xplot_window_collection.axes[j][i] = ax
                 xplot_window_collection.props[j][i] = out_prop, in_prop
-                xplot = ax.scatter(self.df[out_prop.data(0)], self.df[in_prop.data(0)], alpha=0.3, marker='.', c='blue')
+                xplot = ax.scatter(self.df[out_prop], self.df[in_prop], alpha=alpha, marker='.', c='blue')
                 xplot_window_collection.xplots[j][i] = xplot
-                ax.set_xlabel(out_prop.data(0))
-                ax.set_ylabel(in_prop.data(0))
+                ax.set_xlabel(out_prop)
+                ax.set_ylabel(in_prop)
                 plot_window.figure.subplots_adjust(bottom=0.2)
                 container_layout.addWidget(plot_window, j, i)
+                plotted_so_far.append((out_prop, in_prop))
         super_scroll.setWidget(container_widget)
         super_scroll.setWidgetResizable(True)
-        xplot_window_collection.layout.addWidget(super_container, 0, 0, 1, 3)
+        xplot_window_collection.layout.addWidget(super_container, 0, 0, 1, 5)
         return xplot_window_collection
 
     def send_data(self, col):
         if col not in self.ds.column_names():
             return
         data = self.df[col]
-        scaled = MinMaxScaler().fit_transform(data.values.reshape(-1, 1))
+        scaled = MinMaxScaler(feature_range=(0, 1)).fit_transform(data.values.reshape(-1, 1))
         rgb = color_map(scaled)
-        self.data_sent.emit(rgb.reshape(-1, 4), data.min(), data.max() )
+        self.data_sent.emit(rgb.reshape(-1, 4), data.min(), data.max())
 
     @staticmethod
     def dispersion(hist_data):

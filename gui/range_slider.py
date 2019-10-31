@@ -32,7 +32,7 @@ QRangeSlider > QSplitter::handle:pressed {
 """
 
 def scale(val, src, dst):
-    return round(float(((val - src[0]) / float(src[1]-src[0])) * (dst[1]-dst[0]) + dst[0]), 2)
+    return round(float(((val - src[0]) / float(src[1]-src[0])) * (dst[1]-dst[0]) + dst[0]),2)
 
 
 class Ui_Form(object):
