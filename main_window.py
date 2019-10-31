@@ -146,6 +146,7 @@ class MainWindow(QMainWindow):
     def append_table(self, name):
         self.table_sub_window.table_widget.update_with_ds(self.dataset_dictionary[self._current_dataset_name])
         self.update_categoricals(name)
+        self.update_df(self.current_ds.df)
         self.dataset_appended.emit()
 
     def update_table(self):

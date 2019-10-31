@@ -39,7 +39,10 @@ class DataEditingTab(QWidget):
     def create_one_hot(self):
         cols, axis = self.get_table_selection()
         column_names = self.current_df.columns[cols]
-        df = pd.get_dummies(self.current_df, columns=column_names)
+        col = column_names[0]
+
+        df = pd.get_dummies(self.current_df, columns=[col], drop_first=False)
+        df[col] = self.current_df[col]
         # connects to when data is loaded, after QTableview is created in main window
         self.df_changed.emit(df)
 
@@ -48,7 +51,6 @@ class DataEditingTab(QWidget):
         cols, axis = self.get_table_selection()
         column_names = self.current_df.columns[cols]
         df = self.current_df.drop(column_names, axis=axis)
-
         #connects to when data is loaded, after QTableview is created in main window
         self.df_changed.emit(df)
 

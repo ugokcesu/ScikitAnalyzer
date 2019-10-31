@@ -5,7 +5,7 @@ from gui.table_widget import TableWidget
 
 
 class MdiSubWindow(QMdiSubWindow):
-    def __init__(self, ds, name, parent = None):
+    def __init__(self, ds, name, parent=None):
         super().__init__()
         self.table_widget = TableWidget(ds, name, parent)
         self.setWidget(self.table_widget)
