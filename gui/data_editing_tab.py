@@ -37,9 +37,16 @@ class DataEditingTab(QWidget):
 
     # this should be in dataset class or in something like dataset_editor
     def create_one_hot(self):
-        cols, axis = self.get_table_selection()
+        try:
+            cols, axis = self.get_table_selection()
+        except AttributeError:
+            return
         column_names = self.current_df.columns[cols]
-        col = column_names[0]
+        try:
+            col = column_names[0]
+        except IndexError:
+            # an entire column was not selected
+            return
 
         df = pd.get_dummies(self.current_df, columns=[col], drop_first=False)
         df[col] = self.current_df[col]
@@ -48,10 +55,13 @@ class DataEditingTab(QWidget):
 
     # this should be in dataset class or in something like dataset_editor
     def drop_columns(self):
-        cols, axis = self.get_table_selection()
+        try:
+            cols, axis = self.get_table_selection()
+        except AttributeError:
+            return
         column_names = self.current_df.columns[cols]
         df = self.current_df.drop(column_names, axis=axis)
-        #connects to when data is loaded, after QTableview is created in main window
+        # connects to when data is loaded, after QTableview is created in main window
         self.df_changed.emit(df)
 
     def get_table_selection(self):
@@ -73,5 +83,4 @@ class DataEditingTab(QWidget):
         if ds:
             self._current_ds = ds
             self.current_df = ds.df
-
 

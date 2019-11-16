@@ -24,7 +24,7 @@ class FitPredictTab(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("FitPredictDock")
-        self.setWindowTitle("Machine Learning")
+        self.setWindowTitle("Grid Search")
 
         # this dict will store ml parameters
         # and restore them as needed (instead of generating duplicates

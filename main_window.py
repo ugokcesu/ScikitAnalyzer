@@ -1,6 +1,6 @@
 import sys
 
-from PyQt5.Qt import QApplication, QSize, QIcon, QMdiSubWindow, QWidget, QDockWidget, QTabWidget, QPushButton, QLayout
+from PyQt5.Qt import QApplication, QSize, QIcon, QMdiSubWindow, QWidget, QDockWidget, QTabWidget, QPushButton, QLayout, QSizePolicy
 from PyQt5.QtWidgets import QMainWindow, QMdiArea, QTableWidget, QAction, QCheckBox
 from PyQt5.QtCore import Qt, pyqtSignal
 
@@ -14,6 +14,7 @@ from gui.mdi_subwindow import MdiSubWindow
 from gui.range_slider import QRangeSlider
 from gui.plot_window import PlotWindow
 from gui.dynamic_combobox import DynamicComboBox
+
 
 class MainWindow(QMainWindow):
     dataset_opened = pyqtSignal(Dataset, TableWidget)
@@ -35,12 +36,12 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.mdi_area)
 
         self.table_sub_window = None
-        self.mdi_area.subWindowActivated.connect(self.left_dock.data_analysis_tab.update_upon_window_activation)
+        self.mdi_area.subWindowActivated.connect(self.left_dock._analysis_tab.update_upon_window_activation.emit)
 
         #CONNECTIONS
 
         # signals from dock, related to dataset updates
-        self.left_dock.data_load_tab.load_button_connect_to(self.create_table_view)
+        self.left_dock.data_load_button_connect_to(self.create_table_view)
         self.left_dock.mask_created_from_xplot.connect(self.append_table)
 
         # outgoing signals related to dataset updated
@@ -48,16 +49,14 @@ class MainWindow(QMainWindow):
 
         self.dataset_updated.connect(self.disable_window_widgets)
         self.dataset_updated.connect(self.left_dock.dataset_opened.emit)
-
         self.dataset_appended.connect(self.left_dock.dataset_appended.emit)
 
-        self.left_dock.data_load_tab.close_dataset.connect(self.mdi_area.closeAllSubWindows)
-        self.left_dock.data_load_tab.close_dataset.connect(self.remove_current_dataset)
+        self.left_dock.data_tab.close_dataset.connect(self.mdi_area.closeAllSubWindows)
+        self.left_dock.data_tab.close_dataset.connect(self.remove_current_dataset)
 
-        self.left_dock.data_analysis_tab.request_plot_generation.connect(self.generate_plot_mdi)
-        self.left_dock.data_analysis_tab_multi.request_plot_generation.connect(self.generate_plot_mdi)
-        self.left_dock.fit_predict_tab.request_plot_generation.connect(self.generate_plot_mdi)
-        self.left_dock.data_analysis_tab.info_calculated.connect(self.set_categoricals)
+        self.left_dock.analysis_tab.request_plot_generation.connect(self.generate_plot_mdi)
+        self.left_dock.ml_tab.request_plot_generation.connect(self.generate_plot_mdi)
+        self.left_dock.analysis_tab.info_calculated.connect(self.set_categoricals)
 
         # Toolbars
         self.view_toolbar = self.addToolBar("View Toolbar")
@@ -98,8 +97,8 @@ class MainWindow(QMainWindow):
         self.mdi_area.tileSubWindows()
 
     def create_table_view(self):
-        method_name = self.left_dock.data_load_tab.dataset_load_method()
-        dataset_name = self.left_dock.data_load_tab.dataset_name()
+        method_name = self.left_dock.dataset_load_method()
+        dataset_name = self.left_dock.dataset_name()
         method = getattr(sklearn.datasets, method_name, None)
         # TODO later decide if necessary to keep datasets in a dict
         if dataset_name in self.dataset_dictionary:
@@ -118,11 +117,12 @@ class MainWindow(QMainWindow):
                 self.table_sub_window.setWindowFlags(Qt.CustomizeWindowHint | Qt.WindowTitleHint | Qt.Tool)
                 self.mdi_area.addSubWindow(self.table_sub_window)
                 self.table_sub_window.show()
-                self.table_sub_window.table_widget.checkboxes_clicked.connect(self.left_dock.data_analysis_tab.update_self_with_window_state)
+                self.table_sub_window.table_widget.checkboxes_clicked.connect(
+                    self.left_dock.update_analysis_tab_with_window_state)
                 self.mdi_area.tileSubWindows()
                 self.dataset_opened.emit(self.dataset_dictionary[dataset_name], self.table_sub_window.table_widget)
-                self.left_dock.data_editing_tab.table_changed.connect(self.update_table)
-                self.left_dock.data_editing_tab.df_changed.connect(self.update_df)
+                self.left_dock.table_changed.connect(self.update_table)
+                self.left_dock.df_changed.connect(self.update_df)
             else:
                 return None
         else:

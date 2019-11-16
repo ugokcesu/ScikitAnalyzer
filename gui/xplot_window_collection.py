@@ -200,6 +200,6 @@ class XPlotWindowCollection(QWidget):
                     cb1 = mpl.colorbar.ColorbarBase(ax, cmap=color_map,
                                                     norm=norm,
                                                     orientation='horizontal')
-                    cb1.set_label(out_prop.data(0))
+                    cb1.set_label(color_by)
                     self.layout.addWidget(color_scale, 1, 2)
                 self.windows[j][i].canvas.draw()

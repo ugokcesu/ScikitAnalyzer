@@ -43,7 +43,7 @@ class DataLoaderTab(QWidget):
 
         self._close_btn.clicked.connect(self.close_ds)
 
-    def load_button_connect_to(self, func):
+    def data_load_button_connect_to(self, func):
         self._load_btn.clicked.connect(func)
 
     def dataset_load_method(self):

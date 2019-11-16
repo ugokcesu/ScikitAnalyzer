@@ -30,6 +30,7 @@ class DataAnalysisTab(QWidget):
         self._plot_generator = None
 
         # viewing options widgets and layout
+        # TODO: perhaps delete this unnecessary thing? will hide for now
         self._current_ds_lb = QLabel("Current Dataset:")
         self._view_description_cb = QCheckBox("Show description")
         self._view_table_cb = QCheckBox("Show Table")
@@ -42,6 +43,7 @@ class DataAnalysisTab(QWidget):
         self._view_gb = QGroupBox()
         self._view_gb.setTitle("View Options")
         self._view_gb.setLayout(self._view_layout)
+        self._view_gb.hide()
 
         # info statistics
         self._info_calculate_btn = QPushButton("Calculate Info")
@@ -94,8 +96,6 @@ class DataAnalysisTab(QWidget):
         self._hist_plot.clicked.connect(self.plot_histogram)
         self._info_calculate_btn.clicked.connect(self.calculate_info)
 
-        # keep histogram area grayed out until info stats are calculated
-
     def dataset_opened(self, ds=None, _=None):
         #set new ds if needed, otherwise just reread columns from old
         if ds:
@@ -139,7 +139,7 @@ class DataAnalysisTab(QWidget):
             widget = sender.activeSubWindow().widget()
         except AttributeError:
             # all sub windows have been closed
-            self.setDisabled(True)
+            #self.setDisabled(True)
             return
         if isinstance(widget, TableWidget):
             self._current_table_widget = widget
@@ -152,7 +152,6 @@ class DataAnalysisTab(QWidget):
 
     # connect to dataLoader tab's close_ds method
     def update_upon_closing_dataset(self):
-        self.setDisabled(True)
         self._hist_color_by.clear()
         self._hist_data.clear()
         self._ds_columns = []
@@ -191,7 +190,6 @@ class DataAnalysisTab(QWidget):
                 self._categorical_columns.append(col)
         self.enable_histogram()
         self.info_calculated.emit(self._categorical_columns)
-
 
     def table_edited(self, sender):
         # print(" I changed, sender = {}, {} ={}".format(sender.row(), sender.column(), sender.data(Qt.EditRole)))
