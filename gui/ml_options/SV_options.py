@@ -11,6 +11,7 @@ class SVOptions(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.setWindowTitle("SV")
         self._gamma_lb = QLabel("Gamma")
         self._gamma_le = QLineEdit()
         self._gamma_le.setToolTip("float or list of comma delimited floats")

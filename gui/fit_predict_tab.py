@@ -1,7 +1,7 @@
 #import warnings
 
 from PyQt5.QtWidgets import QWidget, QCheckBox, QGridLayout, QLabel, QComboBox, QGroupBox, QPushButton, QVBoxLayout,\
-    QListWidget, QAbstractItemView, QSpinBox, QDoubleSpinBox, QToolTip
+    QListWidget, QAbstractItemView, QSpinBox, QDoubleSpinBox, QToolTip, QTabWidget
 from PyQt5.QtCore import Qt, pyqtSignal, QPoint, QTimer
 from PyQt5.Qt import QSizePolicy
 
@@ -10,9 +10,10 @@ from gui.dynamic_combobox import DynamicComboBox
 from gui.ml_options.KNeighbors_options import KNeighborsOptions
 from gui.ml_options.SV_options import SVOptions
 from gui.gui_helper import GuiHelper
-from plot_generator import PlotGenerator
+from gui.list_widget import ListWidget
 
-from ml_choices import Scalers, MLClassification, MLRegression, MLWidgets, ml_2_widgets
+from plot_generator import PlotGenerator
+from ml_choices import Scalers, MLClassification, MLRegression, MLWidgets, ml_2_widget_number
 from ml_expert import MLExpert
 from ml_plotter import MLPlotter
 
@@ -49,46 +50,56 @@ class FitPredictTab(QWidget):
         self._data_target_lb = QLabel("Select Target")
         self._data_target_combo = DynamicComboBox()
         self._data_target_combo.setToolTip("One column must be selected as target for running estimator")
-
+        self._data_target_combo.popup_clicked.connect(self.fill_target_combo)
+        self._data_target_combo.currentTextChanged.connect(self.fill_estimator_list)
         self._data_layout = QGridLayout()
 
         self._data_layout.addWidget(self._data_feature_lb, 0, 0)
         self._data_layout.addWidget(self._data_feature_list, 1, 0)
         self._data_layout.addWidget(self._data_target_lb, 0, 1)
         self._data_layout.addWidget(self._data_target_combo, 1, 1)
-        self._data_target_combo.popup_clicked.connect(self.fill_target_combo)
 
         self._data_gb = QGroupBox("Data Selection")
         self._data_gb.setLayout(self._data_layout)
         self._data_layout.setAlignment(Qt.AlignTop)
 
+
         # scaling
         self._scaling_select_lb = QLabel("Select Scaler")
-        self._scaling_select_combo = DynamicComboBox()
-        self._scaling_select_combo.addItem("None")
-        self._scaling_select_combo.addItems(Scalers.all_values())
-        self._scaling_select_combo.setCurrentIndex(0)
-        self._scaling_layout = QGridLayout()
-        self._scaling_layout.addWidget(self._scaling_select_lb, 0, 0)
-        self._scaling_layout.addWidget(self._scaling_select_combo, 0, 1)
+        self._scaling_select_list = QListWidget()
+        self._scaling_select_list.setSelectionMode(QAbstractItemView.ExtendedSelection)
 
-        self._scaling_gb = QGroupBox("Data Scaling")
-        self._scaling_gb.setLayout(self._scaling_layout)
+        # self._scaling_select_list.addItem("None")
+        self._scaling_select_list.addItems(Scalers.all_values())
+        self._grid_layout = QGridLayout()
+        self._grid_layout.addWidget(self._scaling_select_lb, 0, 0)
+        self._grid_layout.addWidget(self._scaling_select_list, 1, 0)
 
-        #predict
-        self._predict_select_lb = QLabel("Select Estimator")
-        self._predict_select_combo = DynamicComboBox()
-        self._predict_select_combo.setToolTip("An estimator must be selected to run")
-        self._predict_select_combo.popup_clicked.connect(self.fill_predict_combo)
-        self._predict_select_combo.currentTextChanged.connect(self._populate_ml_parameters)
+        #estimator
+        self._estimator_select_lb = QLabel("Select Estimator")
+        self._estimator_select_list = ListWidget()
+        self._estimator_select_list.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        self._estimator_select_list.setToolTip("An estimator must be selected to run")
+        self._estimator_select_list.mouse_up.connect(self._populate_ml_parameters)
 
-        self._predict_layout = QGridLayout()
-        self._predict_layout.addWidget(self._predict_select_lb, 0, 0)
-        self._predict_layout.addWidget(self._predict_select_combo, 0, 1)
-        self._predict_layout.setAlignment(Qt.AlignTop)
+        self._grid_layout.addWidget(self._estimator_select_lb, 0, 1)
+        self._grid_layout.addWidget(self._estimator_select_list, 1, 1)
 
-        self._predict_gb = QGroupBox("Estimator")
-        self._predict_gb.setLayout(self._predict_layout)
+        self._grid_gb = QGroupBox("Grid Search")
+        self._grid_gb.setLayout(self._grid_layout)
+        self._grid_layout.setAlignment(Qt.AlignTop)
+
+        self._estimator_widgets = {}
+        self._estimator_tabs = QTabWidget()
+
+        self._estimator_widgets[MLWidgets.KNeighbors] = KNeighborsOptions()
+        self._estimator_tabs.addTab(self._estimator_widgets[MLWidgets.KNeighbors],
+                                    self._estimator_widgets[MLWidgets.KNeighbors].windowTitle())
+        self._estimator_widgets[MLWidgets.SV] = SVOptions()
+        self._estimator_tabs.addTab(self._estimator_widgets[MLWidgets.SV],
+                                    self._estimator_widgets[MLWidgets.SV].windowTitle())
+        self._grid_layout.addWidget(self._estimator_tabs, 2, 0, 1, 2)
+
 
         #parameters
         self._param_split_lb = QLabel("Test/Train Split Ratio")
@@ -114,9 +125,7 @@ class FitPredictTab(QWidget):
         self._layout.setAlignment(Qt.AlignTop)
 
         self._layout.addWidget(self._data_gb, 0, 0)
-        self._layout.addWidget(self._scaling_gb, 1, 0)
-        self._layout.addWidget(self._predict_gb, 2, 0)
-        self._layout.addWidget(self._param_gb, 3, 0)
+        self._layout.addWidget(self._grid_gb, 1, 0)
         self._layout.addWidget(self._run_btn, 4, 0)
         self._layout.setAlignment(Qt.AlignTop)
         self.setLayout(self._layout)
@@ -139,21 +148,21 @@ class FitPredictTab(QWidget):
             if selected_col not in self._ds_columns:
                 raise KeyError
 
-        scaler = self._scaling_select_combo.currentText()
+        scaler = self._scaling_select_list.currentText()
 
-        ml = self._predict_select_combo.currentText()
+        ml = self._estimator_select_list.currentText()
 
         if ml not in MLClassification.all_values() + MLRegression.all_values():
-            GuiHelper.point_to_error(self._predict_select_combo)
+            GuiHelper.point_to_error(self._estimator_select_list)
             return
 
         test_ratio = self._param_split_sp.value()
 
         use_grid_search = self._param_gscv_cb.isChecked()
 
-        if ml_2_widgets(ml) not in self._param_widgets.keys():
+        if ml_2_widget_number(ml) not in self._param_widgets.keys():
             return
-        parameters = self._param_widgets[ml_2_widgets(ml)].gather_parameters()
+        parameters = self._param_widgets[ml_2_widget_number(ml)].gather_parameters()
         if parameters is None:
             return
 
@@ -164,7 +173,22 @@ class FitPredictTab(QWidget):
         self.request_plot_generation.emit(window, "GridSearch Results")
 
     def _populate_ml_parameters(self):
-        selected_ml = self._predict_select_combo.currentText()
+        selected_widget_nos = []
+        for item in self._estimator_select_list.selectedItems():
+            try:
+                selected_widget_nos.append(ml_2_widget_number(item.text()))
+            except KeyError:
+                return
+
+        for no in range(self._estimator_tabs.count()):
+            if no in selected_widget_nos:
+                self._estimator_tabs.setTabEnabled(no, True)
+            else:
+                self._estimator_tabs.setTabEnabled(no, False)
+
+
+    def _populate_ml_parameters2(self):
+        selected_ml = self._estimator_select_list.currentText()
         item = self._param_layout.itemAtPosition(self._param_last_row, 0)
         if item is not None:
             self._param_layout.removeItem(item)
@@ -189,15 +213,14 @@ class FitPredictTab(QWidget):
         else:
             self._param_layout.addWidget(QLabel("Oops"), self._param_last_row, 0, 1, 2)
 
-    def fill_predict_combo(self):
-        self._predict_select_combo.clear()
+    def fill_estimator_list(self):
+        self._estimator_select_list.clear()
         if self._data_target_combo.currentText() == '':
-            self._predict_select_combo.addItem("Target must be selected")
+            self._estimator_select_list.addItem("Target must be selected")
         elif self._data_target_combo.currentText() in self._ds.categorical_columns:
-            self._predict_select_combo.addItems(MLClassification.all_values())
+            self._estimator_select_list.addItems(MLClassification.all_values())
         else:
-            self._predict_select_combo.addItems(MLRegression.all_values())
-        self._predict_select_combo.setCurrentIndex(0)
+            self._estimator_select_list.addItems(MLRegression.all_values())
 
     def fill_target_combo(self):
         self._data_target_combo.clear()

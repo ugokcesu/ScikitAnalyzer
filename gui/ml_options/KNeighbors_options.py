@@ -1,16 +1,19 @@
-from PyQt5.QtWidgets import QWidget, QLabel, QSpinBox, QGridLayout, QGroupBox, QLineEdit, QToolTip
-from PyQt5.QtCore import QPoint, QTimer
+import sys
 import pandas as pd
 
-from scikit_logger import ScikitLogger
+from PyQt5.QtWidgets import QWidget, QLabel, QSpinBox, QGridLayout, QGroupBox, QLineEdit, QToolTip
+from PyQt5.Qt import QApplication, QIcon
 
+from scikit_logger import ScikitLogger
 from gui.gui_helper import GuiHelper
+
 
 class KNeighborsOptions(QWidget):
     logger = ScikitLogger()
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.setWindowTitle("KNeighbors")
         self._n_neighbors_lb = QLabel("Number of Neighbors")
         self._n_neighbors_le = QLineEdit()
         self._n_neighbors_le.setToolTip("single number or separated by commas")
@@ -51,3 +54,12 @@ class KNeighborsOptions(QWidget):
     @property
     def name(self):
         return "KNeighbors"
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    form = KNeighborsOptions()
+    form.setWindowTitle("Testing")
+    app.setWindowIcon(QIcon("icons/scikit.png"))
+    form.show()
+    app.exec_()
+

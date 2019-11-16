@@ -36,7 +36,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.mdi_area)
 
         self.table_sub_window = None
-        self.mdi_area.subWindowActivated.connect(self.left_dock._analysis_tab.update_upon_window_activation.emit)
+        self.mdi_area.subWindowActivated.connect(self.left_dock.analysis_tab.update_upon_window_activation.emit)
 
         #CONNECTIONS
 

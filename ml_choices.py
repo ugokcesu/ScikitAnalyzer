@@ -2,8 +2,8 @@ from enum import Enum
 
 
 class Scalers(Enum):
-    MinMax = 1
-    Robust = 2
+    MinMax = 0
+    Robust = 1
 
     @classmethod
     def all_values(cls):
@@ -11,8 +11,8 @@ class Scalers(Enum):
 
 
 class MLRegression(Enum):
-    KNeighborsRegressor = 1
-    SVR = 2
+    KNeighborsRegressor = 0
+    SVR = 1
 
     @classmethod
     def all_values(cls):
@@ -20,8 +20,8 @@ class MLRegression(Enum):
 
 
 class MLClassification(Enum):
-    KNeighborsClassifier = 1
-    SVC = 2
+    KNeighborsClassifier = 0
+    SVC = 1
 
     @classmethod
     def all_values(cls):
@@ -29,15 +29,15 @@ class MLClassification(Enum):
 
 
 class MLWidgets(Enum):
-    KNeighbors = 1
-    SV = 2
+    KNeighbors = 0
+    SV = 1
 
     @classmethod
     def all_values(cls):
         return [m.name for m in cls]
 
 
-def ml_2_widgets(ml):
+def ml_2_widget_number(ml):
     matching = {
         MLRegression.SVR.name:     MLWidgets.SV,
         MLClassification.SVC.name: MLWidgets.SV,
@@ -47,4 +47,4 @@ def ml_2_widgets(ml):
     if ml not in matching.keys():
         return None
     else:
-        return matching[ml]
+        return matching[ml].value
