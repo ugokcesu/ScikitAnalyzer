@@ -6,6 +6,7 @@ from scikit_logger import ScikitLogger
 
 from gui.gui_helper import GuiHelper
 
+
 class SVOptions(QWidget):
     logger = ScikitLogger()
 

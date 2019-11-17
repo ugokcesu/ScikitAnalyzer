@@ -17,6 +17,9 @@ class MLExpert:
         self._ml = {MLClassification.KNeighborsClassifier.name: KNeighborsClassifier(), MLClassification.SVC.name: SVC(),
                     MLRegression.KNeighborsRegressor.name: KNeighborsRegressor(), MLRegression.SVR.name: SVR()}
 
+    def big_loop(self, feature_columns, target_column,  test_ratio, scalers, parameters):
+        pass
+
     def data_splitter(self, ml, test_ratio, feature_columns, target_column):
         all_x, all_y = self._ds.df[feature_columns], self._ds.df[target_column]
         if ml in MLClassification.all_values():

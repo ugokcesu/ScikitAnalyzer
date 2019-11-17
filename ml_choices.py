@@ -48,3 +48,17 @@ def ml_2_widget_number(ml):
         return None
     else:
         return matching[ml].value
+
+
+def ml_2_widget_name(ml):
+    matching = {
+        MLRegression.SVR.name: MLWidgets.SV,
+        MLClassification.SVC.name: MLWidgets.SV,
+        MLRegression.KNeighborsRegressor.name: MLWidgets.KNeighbors,
+        MLClassification.KNeighborsClassifier.name: MLWidgets.KNeighbors
+    }
+    if ml not in matching.keys():
+        return None
+    else:
+        return matching[ml].name
+

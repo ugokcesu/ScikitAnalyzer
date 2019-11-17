@@ -13,7 +13,7 @@ from gui.gui_helper import GuiHelper
 from gui.list_widget import ListWidget
 
 from plot_generator import PlotGenerator
-from ml_choices import Scalers, MLClassification, MLRegression, MLWidgets, ml_2_widget_number
+from ml_choices import Scalers, MLClassification, MLRegression, MLWidgets, ml_2_widget_number, ml_2_widget_name
 from ml_expert import MLExpert
 from ml_plotter import MLPlotter
 
@@ -69,7 +69,7 @@ class FitPredictTab(QWidget):
         self._scaling_select_list = QListWidget()
         self._scaling_select_list.setSelectionMode(QAbstractItemView.ExtendedSelection)
 
-        # self._scaling_select_list.addItem("None")
+        self._scaling_select_list.addItem("None")
         self._scaling_select_list.addItems(Scalers.all_values())
         self._grid_layout = QGridLayout()
         self._grid_layout.addWidget(self._scaling_select_lb, 0, 0)
@@ -92,12 +92,12 @@ class FitPredictTab(QWidget):
         self._estimator_widgets = {}
         self._estimator_tabs = QTabWidget()
 
-        self._estimator_widgets[MLWidgets.KNeighbors] = KNeighborsOptions()
-        self._estimator_tabs.addTab(self._estimator_widgets[MLWidgets.KNeighbors],
-                                    self._estimator_widgets[MLWidgets.KNeighbors].windowTitle())
-        self._estimator_widgets[MLWidgets.SV] = SVOptions()
-        self._estimator_tabs.addTab(self._estimator_widgets[MLWidgets.SV],
-                                    self._estimator_widgets[MLWidgets.SV].windowTitle())
+        self._estimator_widgets[MLWidgets.KNeighbors.name] = KNeighborsOptions()
+        self._estimator_tabs.addTab(self._estimator_widgets[MLWidgets.KNeighbors.name],
+                                    self._estimator_widgets[MLWidgets.KNeighbors.name].windowTitle())
+        self._estimator_widgets[MLWidgets.SV.name] = SVOptions()
+        self._estimator_tabs.addTab(self._estimator_widgets[MLWidgets.SV.name],
+                                    self._estimator_widgets[MLWidgets.SV.name].windowTitle())
         self._grid_layout.addWidget(self._estimator_tabs, 2, 0, 1, 2)
 
 
@@ -130,47 +130,88 @@ class FitPredictTab(QWidget):
         self._layout.setAlignment(Qt.AlignTop)
         self.setLayout(self._layout)
 
-        # signal slot connections
-    def _run(self):
-        # check columns
-        if not self._data_feature_list.selectedItems():
-            GuiHelper.point_to_error(self._data_feature_list)
-            return
-        if self._data_target_combo.currentText() == '':
-            GuiHelper.point_to_error(self._data_target_combo)
-            return
+    def _validate_features(self):
         feature_columns = []
         for item in self._data_feature_list.selectedItems():
             feature_columns.append(item.text())
-        target_column = self._data_target_combo.currentText()
+        if not feature_columns:
+            GuiHelper.point_to_error(self._data_feature_list)
+            return None
+        for col in feature_columns:
+            if col not in self._ds_columns:
+                raise KeyError('selected column ({}) name not in dataframe'.format(col))
+        return feature_columns
 
-        for selected_col in feature_columns + [target_column]:
-            if selected_col not in self._ds_columns:
-                raise KeyError
+    def _validate_target(self):
+        target = self._data_target_combo.currentText()
+        if target == '':
+            GuiHelper.point_to_error(self._data_target_combo)
+            return None
+        if target not in self._ds_columns:
+            raise KeyError('selected column ({}) name not in dataframe'.format(target))
+        return target
 
-        scaler = self._scaling_select_list.currentText()
+    def _validate_scaler(self):
+        scaler = []
+        for item in self._scaling_select_list.selectedItems():
+            scaler.append(item.text())
+        if not scaler:
+            scaler.append("None")
+        return scaler
 
-        ml = self._estimator_select_list.currentText()
+    def _validate_ml(self):
+        ml = []
+        for item in self._estimator_select_list.selectedItems():
+            ml.append(item.text())
 
-        if ml not in MLClassification.all_values() + MLRegression.all_values():
+        if not ml:
             GuiHelper.point_to_error(self._estimator_select_list)
+            return None
+        return ml
+
+    def _validate_parameters(self, ml):
+        parameters = {}
+        for algo_name in ml:
+            widget_name = ml_2_widget_name(algo_name)
+            param = self._estimator_widgets[widget_name].gather_parameters()
+            if not param:
+                # set to current widget to problematic one
+                # so that the widgets validate function can show issue to user
+                self._estimator_tabs.setCurrentWidget(self._estimator_widgets[widget_name])
+                return None
+            parameters[algo_name] = param
+        return parameters
+
+    def _run(self):
+        # check columns
+        feature_columns = self._validate_features()
+        if not feature_columns:
+            return
+        target_column = self._validate_target()
+        if not target_column:
+            return
+
+        ml = self._validate_ml()
+        if not ml:
             return
 
         test_ratio = self._param_split_sp.value()
 
-        use_grid_search = self._param_gscv_cb.isChecked()
+        scalers = self._validate_scaler()
 
-        if ml_2_widget_number(ml) not in self._param_widgets.keys():
-            return
-        parameters = self._param_widgets[ml_2_widget_number(ml)].gather_parameters()
+        parameters = self._validate_parameters(ml)
         if parameters is None:
             return
 
-        X_train, X_test, y_train, y_test = self._ml_expert.data_splitter(ml, test_ratio, feature_columns, target_column)
+        self._ml_expert.big_loop(feature_columns, target_column,  test_ratio, scalers, parameters)
+
+        '''
+        X_train, X_test, y_train, y_test = self._ml_expert.data_splitter(.......)
         pipeline = self._ml_expert.assemble_pipeline(scaler, ml)
         grid = self._ml_expert.fit_grid(ml, pipeline, parameters, X_train, y_train)
         window = self._ml_plotter.plot_grid_results(grid, X_test, y_test)
         self.request_plot_generation.emit(window, "GridSearch Results")
+        '''
 
     def _populate_ml_parameters(self):
         selected_widget_nos = []
@@ -186,32 +227,6 @@ class FitPredictTab(QWidget):
             else:
                 self._estimator_tabs.setTabEnabled(no, False)
 
-
-    def _populate_ml_parameters2(self):
-        selected_ml = self._estimator_select_list.currentText()
-        item = self._param_layout.itemAtPosition(self._param_last_row, 0)
-        if item is not None:
-            self._param_layout.removeItem(item)
-            item.widget().hide()
-
-        if selected_ml == MLRegression.KNeighborsRegressor.name or selected_ml == MLClassification.KNeighborsClassifier.name:
-            if MLWidgets.KNeighbors in self._param_widgets.keys():
-                self._param_layout.addWidget(self._param_widgets[MLWidgets.KNeighbors], self._param_last_row, 0, 1, 2)
-                self._param_widgets[MLWidgets.KNeighbors].show()
-
-            else:
-                self._param_widgets[MLWidgets.KNeighbors] = KNeighborsOptions()
-                self._param_layout.addWidget(self._param_widgets[MLWidgets.KNeighbors], self._param_last_row, 0, 1, 2)
-        elif selected_ml == MLRegression.SVR.name or selected_ml == MLClassification.SVC.name:
-            if MLWidgets.SV in self._param_widgets.keys():
-                self._param_layout.addWidget(self._param_widgets[MLWidgets.SV], self._param_last_row, 0, 1, 2)
-                self._param_widgets[MLWidgets.SV].show()
-
-            else:
-                self._param_widgets[MLWidgets.SV] = SVOptions()
-                self._param_layout.addWidget(self._param_widgets[MLWidgets.SV], self._param_last_row, 0, 1, 2)
-        else:
-            self._param_layout.addWidget(QLabel("Oops"), self._param_last_row, 0, 1, 2)
 
     def fill_estimator_list(self):
         self._estimator_select_list.clear()
