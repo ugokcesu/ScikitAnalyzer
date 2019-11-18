@@ -12,7 +12,8 @@ from gui.plot_window import PlotWindow
 class MLPlotter:
     @staticmethod
     def plot_grid_results_table(grid):
-        df = pd.DataFrame(grid.cv_results_)
+        #df = pd.DataFrame(grid.cv_results_)
+        df = grid
         model = DatasetModel(dataFrame=df)
         grid_results = QTableView()
         grid_results.setAlternatingRowColors(True)
@@ -30,7 +31,7 @@ class MLPlotter:
         for i, col in enumerate(params):
             mask = MLPlotter.create_bool_mask(df, col, best)
             ax = plot_window.figure.add_subplot(len(params), 1, i+1)
-            ax.plot(df[mask][col], df[mask].mean_test_score, label=col.split('__')[1]+'_test',linestyle='-', marker='.',color='red', linewidth=1)
+            ax.plot(df[mask][col], df[mask].mean_test_score, label=col.split('__')[1]+'_test', linestyle='-', marker='.',color='red', linewidth=1)
             ax.plot(df[mask][col], df[mask].mean_train_score, label=col.split('__')[1]+'_train',  linestyle='--',marker='.', color='blue', linewidth=1)
             ax.legend(loc='best')
         return plot_window

@@ -2,11 +2,11 @@ from enum import Enum
 
 
 class Scalers(Enum):
-    MinMax = 0
-    Robust = 1
+    MinMaxScaler = 0
+    RobustScaler = 1
 
     @classmethod
-    def all_values(cls):
+    def all_names(cls):
         return [m.name for m in cls]
 
 
@@ -15,7 +15,7 @@ class MLRegression(Enum):
     SVR = 1
 
     @classmethod
-    def all_values(cls):
+    def all_names(cls):
         return [m.name for m in cls]
 
 
@@ -24,7 +24,7 @@ class MLClassification(Enum):
     SVC = 1
 
     @classmethod
-    def all_values(cls):
+    def all_names(cls):
         return [m.name for m in cls]
 
 
@@ -33,7 +33,7 @@ class MLWidgets(Enum):
     SV = 1
 
     @classmethod
-    def all_values(cls):
+    def all_names(cls):
         return [m.name for m in cls]
 
 

@@ -70,7 +70,7 @@ class FitPredictTab(QWidget):
         self._scaling_select_list.setSelectionMode(QAbstractItemView.ExtendedSelection)
 
         self._scaling_select_list.addItem("None")
-        self._scaling_select_list.addItems(Scalers.all_values())
+        self._scaling_select_list.addItems(Scalers.all_names())
         self._grid_layout = QGridLayout()
         self._grid_layout.addWidget(self._scaling_select_lb, 0, 0)
         self._grid_layout.addWidget(self._scaling_select_list, 1, 0)
@@ -203,15 +203,10 @@ class FitPredictTab(QWidget):
         if parameters is None:
             return
 
-        self._ml_expert.big_loop(feature_columns, target_column,  test_ratio, scalers, parameters)
-
-        '''
-        X_train, X_test, y_train, y_test = self._ml_expert.data_splitter(.......)
-        pipeline = self._ml_expert.assemble_pipeline(scaler, ml)
-        grid = self._ml_expert.fit_grid(ml, pipeline, parameters, X_train, y_train)
-        window = self._ml_plotter.plot_grid_results(grid, X_test, y_test)
-        self.request_plot_generation.emit(window, "GridSearch Results")
-        '''
+        categorical = target_column in self._ds.categorical_columns
+        results = self._ml_expert.big_loop(feature_columns, target_column, test_ratio, scalers, parameters, categorical)
+        tbl = self._ml_plotter.plot_grid_results_table(results)
+        self.request_plot_generation.emit(tbl, "grid results")
 
     def _populate_ml_parameters(self):
         selected_widget_nos = []
@@ -233,9 +228,9 @@ class FitPredictTab(QWidget):
         if self._data_target_combo.currentText() == '':
             self._estimator_select_list.addItem("Target must be selected")
         elif self._data_target_combo.currentText() in self._ds.categorical_columns:
-            self._estimator_select_list.addItems(MLClassification.all_values())
+            self._estimator_select_list.addItems(MLClassification.all_names())
         else:
-            self._estimator_select_list.addItems(MLRegression.all_values())
+            self._estimator_select_list.addItems(MLRegression.all_names())
 
     def fill_target_combo(self):
         self._data_target_combo.clear()
