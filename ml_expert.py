@@ -39,6 +39,7 @@ class NoneScaler(BaseEstimator, TransformerMixin):
 class MLExpert:
     def __init__(self, ds):
         self._ds = ds
+        self._grid = None
         self._logger = ScikitLogger()
         self._results_df = None
 
@@ -49,12 +50,14 @@ class MLExpert:
 
         combined_parameters = self.combine_parameters(scalers, parameters)
 
-        grid = GridSearchCV(pipeline, combined_parameters, n_jobs=-2)
+        grid = GridSearchCV(pipeline, combined_parameters, n_jobs=-2, return_train_score=True, cv=5, iid=False)
         grid.fit(X_train, y_train)
 
         df = pd.DataFrame(grid.cv_results_)
+
         self._results_df = df
-        return self._results_df
+        self._grid = grid
+        return self._grid
         # all fitting is done, results inside grids
 
     @classmethod
@@ -97,15 +100,3 @@ class MLExpert:
                 # finally add dict to list
                 final_list.append(new_parameters)
         return final_list
-
-
-        grid = GridSearchCV(pipeline, new_parameters, n_jobs=-2, cv=3, verbose=3)
-        grid.fit(X_train.values, y_train.values)
-        return grid
-
-
-
-
-
-
-
