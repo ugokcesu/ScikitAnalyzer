@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import QWidget, QTextEdit, QSizePolicy,QVBoxLayout, \
-    QTableView, QHBoxLayout, QCheckBox
+    QTableView, QHBoxLayout, QCheckBox, QFrame
 from PyQt5 import QtGui
 from PyQt5.QtCore import pyqtSignal
 
@@ -7,7 +7,7 @@ from PyQt5.QtCore import pyqtSignal
 import dataset_model
 
 
-class TableWidget(QWidget):
+class TableWidget(QFrame):
     sub_window_closed = pyqtSignal(str)
     checkboxes_clicked = pyqtSignal(object)
 
@@ -40,6 +40,8 @@ class TableWidget(QWidget):
         self._description_cb.toggled.connect(self.checkbox_clicked)
         self._table_cb.clicked.connect(self.checkbox_clicked)
         self.initialize_with_dataset(ds)
+
+        self.setFrameShape(QFrame.Box)
 
     def initialize_with_dataset(self, ds):
         self._description.setText(ds.description())

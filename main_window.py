@@ -1,7 +1,7 @@
 import sys
 
 from PyQt5.Qt import QApplication, QSize, QIcon, QMdiSubWindow, QWidget, QDockWidget, QTabWidget, QPushButton, QLayout, QSizePolicy
-from PyQt5.QtWidgets import QMainWindow, QMdiArea, QTableWidget, QAction, QCheckBox
+from PyQt5.QtWidgets import QMainWindow, QMdiArea, QTableWidget, QAction, QCheckBox, QFrame, QVBoxLayout
 from PyQt5.QtCore import Qt, pyqtSignal
 
 from gui.data_loader_tab import DataLoaderTab
@@ -88,16 +88,21 @@ class MainWindow(QMainWindow):
             self.current_ds.categorical_columns.append(cat)
 
     def generate_plot_mdi(self, window, title):
+        container_frame = QFrame()
+        layout = QVBoxLayout()
+        layout.addWidget(window)
+        container_frame.setLayout(layout)
+        container_frame.setFrameShape(QFrame.Box)
+        container_frame.setLineWidth(1)
         if title == "Info Stats":
             for sub in self.mdi_area.subWindowList():
                 if sub.windowTitle() == title:
                     sub.close()
-        self.mdi_area.addSubWindow(window)
-        window.setWindowTitle(title)
-        window.show()
+        self.mdi_area.addSubWindow(container_frame)
+        container_frame.setWindowTitle(title)
+        container_frame.show()
 
         self.mdi_area.tileSubWindows()
-
 
     def create_table_view(self):
         method_name = self.left_dock.dataset_load_method()
