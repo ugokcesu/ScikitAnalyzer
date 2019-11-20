@@ -1,18 +1,13 @@
-#import warnings
+from PyQt5.QtWidgets import QWidget, QCheckBox, QGridLayout, QLabel,  QGroupBox, QPushButton, \
+    QListWidget, QAbstractItemView,  QDoubleSpinBox,  QTabWidget, QHBoxLayout
+from PyQt5.QtCore import Qt, pyqtSignal
 
-from PyQt5.QtWidgets import QWidget, QCheckBox, QGridLayout, QLabel, QComboBox, QGroupBox, QPushButton, QVBoxLayout,\
-    QListWidget, QAbstractItemView, QSpinBox, QDoubleSpinBox, QToolTip, QTabWidget, QHBoxLayout
-from PyQt5.QtCore import Qt, pyqtSignal, QPoint, QTimer
-from PyQt5.Qt import QSizePolicy
-
-from gui.table_widget import TableWidgetState, TableWidget
 from gui.dynamic_combobox import DynamicComboBox
 from gui.ml_options.KNeighbors_options import KNeighborsOptions
 from gui.ml_options.SV_options import SVOptions
 from gui.gui_helper import GuiHelper
 from gui.list_widget import ListWidget
 
-from plot_generator import PlotGenerator
 from ml_choices import Scalers, MLClassification, MLRegression, MLWidgets, ml_2_widget_number, ml_2_widget_name
 from ml_expert import MLExpert
 from ml_plotter import MLPlotter
@@ -20,7 +15,6 @@ from ml_plotter import MLPlotter
 
 class FitPredictTab(QWidget):
     request_plot_generation = pyqtSignal(QWidget, str)
-    info_calculated = pyqtSignal(list)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -30,17 +24,10 @@ class FitPredictTab(QWidget):
         # this dict will store ml parameters
         # and restore them as needed (instead of generating duplicates
         self._param_widgets = {}
-        self._plot_generator = None
         self._ml_expert = None
         self._ml_plotter = MLPlotter()
-        self._ds_name = ""
         self._ds_columns = []
         self._ds = None
-        self._current_table_widget = None
-        self._current_dataset = None
-        self._categorical_df = None
-        self._categorical_columns = []
-        self._plot_generator = None
         self._grid = None
 
         # data selection
@@ -64,12 +51,10 @@ class FitPredictTab(QWidget):
         self._data_gb.setLayout(self._data_layout)
         self._data_layout.setAlignment(Qt.AlignTop)
 
-
         # scaling
         self._scaling_select_lb = QLabel("Select Scaler")
         self._scaling_select_list = QListWidget()
         self._scaling_select_list.setSelectionMode(QAbstractItemView.ExtendedSelection)
-
         self._scaling_select_list.addItem("None")
         self._scaling_select_list.addItems(Scalers.all_names())
         self._grid_layout = QGridLayout()
@@ -101,8 +86,7 @@ class FitPredictTab(QWidget):
                                     self._estimator_widgets[MLWidgets.SV.name].windowTitle())
         self._grid_layout.addWidget(self._estimator_tabs, 2, 0, 1, 2)
 
-
-        #parameters
+        #p arameters
         self._param_split_lb = QLabel("Test/Train Split Ratio")
         self._param_split_sp = QDoubleSpinBox()
         self._param_split_sp.setRange(0, 0.99)
@@ -231,29 +215,27 @@ class FitPredictTab(QWidget):
         target_column = self._validate_target()
         if not target_column:
             return
-
         ml = self._validate_ml()
         if not ml:
             return
-
         test_ratio = self._param_split_sp.value()
-
         scalers = self._validate_scaler()
-
         parameters = self._validate_parameters(ml)
         if parameters is None:
             return
 
+        # do the run
         categorical = target_column in self._ds.categorical_columns
         grid = self._ml_expert.big_loop(feature_columns, target_column, test_ratio, scalers, parameters, categorical)
+
+        # update self
         self._grid = grid
         self._enable_display_buttons(True)
-        tbl = self._ml_plotter.plot_grid_results_table(grid)
-        self.request_plot_generation.emit(tbl, "grid results")
-        graph = self._ml_plotter.plot_grid_results_summary_graph(grid)
-        self.request_plot_generation.emit(graph, "summary plot")
-        graph2 = self._ml_plotter.plot_grid_results_graph(grid)
-        self.request_plot_generation.emit(graph2, "parameter plot")
+
+        # generate results
+        self._display_table()
+        self._display_summary_plot()
+        self._display_parameter_plots()
 
     def _populate_ml_parameters(self):
         selected_widget_nos = []
@@ -268,7 +250,6 @@ class FitPredictTab(QWidget):
                 self._estimator_tabs.setTabEnabled(no, True)
             else:
                 self._estimator_tabs.setTabEnabled(no, False)
-
 
     def fill_estimator_list(self):
         self._estimator_select_list.clear()
@@ -292,9 +273,7 @@ class FitPredictTab(QWidget):
             self._ds = ds
         if not self._ds:
             raise TypeError
-        self.set_plot_generator(self._ds)
         self._ml_expert = MLExpert(self._ds)
-        self._ds_name = self._ds.name
         self._ds_columns = self._ds.column_names()
         self._data_feature_list.clear()
         self._data_target_combo.clear()
@@ -302,12 +281,6 @@ class FitPredictTab(QWidget):
         self._data_target_combo.setCurrentIndex(0)
         self._data_feature_list.addItems(self._ds_columns)
 
-    def set_plot_generator(self, ds):
-        self._plot_generator = PlotGenerator(ds)
-
-    # connect to dataLoader tab's close_ds method
     def update_upon_closing_dataset(self):
         self.setDisabled(True)
         self._ds_columns = []
-        self._categorical_columns = []
-
