@@ -64,9 +64,6 @@ class MLPlotter:
         df['estimator_cat'] = pd.Categorical(df['estimator'])
         df['scaler'] = df['param_DummyScaler'].astype(str).apply(lambda x: x.split('(')[0])
 
-        params = df.columns[df.columns.str.contains('param_')]
-
-        best = grid.best_params_
         best_params = cls._extract_best_param_per_estimator(df)
         container_widget = QWidget()
         layout = QGridLayout()

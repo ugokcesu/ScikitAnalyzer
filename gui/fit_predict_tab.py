@@ -1,7 +1,7 @@
 #import warnings
 
 from PyQt5.QtWidgets import QWidget, QCheckBox, QGridLayout, QLabel, QComboBox, QGroupBox, QPushButton, QVBoxLayout,\
-    QListWidget, QAbstractItemView, QSpinBox, QDoubleSpinBox, QToolTip, QTabWidget
+    QListWidget, QAbstractItemView, QSpinBox, QDoubleSpinBox, QToolTip, QTabWidget, QHBoxLayout
 from PyQt5.QtCore import Qt, pyqtSignal, QPoint, QTimer
 from PyQt5.Qt import QSizePolicy
 
@@ -41,6 +41,7 @@ class FitPredictTab(QWidget):
         self._categorical_df = None
         self._categorical_columns = []
         self._plot_generator = None
+        self._grid = None
 
         # data selection
         self._data_feature_lb = QLabel("Select Features")
@@ -120,15 +121,55 @@ class FitPredictTab(QWidget):
 
         self._run_btn = QPushButton("Run")
         self._run_btn.clicked.connect(self._run)
+        self._display_table_btn = QPushButton("Show results table")
+        self._display_table_btn.clicked.connect(self._display_table)
+        self._display_summary_plot_btn = QPushButton("Show summary plot")
+        self._display_summary_plot_btn.clicked.connect(self._display_summary_plot)
+        self._display_parameter_plots_btn = QPushButton("Show parameter plots")
+        self._display_parameter_plots_btn.clicked.connect(self._display_parameter_plots)
+
+        self.buttons_hbox = QHBoxLayout()
+        self.buttons_hbox.addWidget(self._run_btn)
+        self.buttons_hbox.addWidget(self._display_table_btn)
+        self.buttons_hbox.addWidget(self._display_summary_plot_btn)
+        self.buttons_hbox.addWidget(self._display_parameter_plots_btn)
+        self._enable_display_buttons(False)
         # layout for the whole tab
         self._layout = QGridLayout()
         self._layout.setAlignment(Qt.AlignTop)
 
         self._layout.addWidget(self._data_gb, 0, 0)
         self._layout.addWidget(self._grid_gb, 1, 0)
-        self._layout.addWidget(self._run_btn, 4, 0)
+        self._layout.addLayout(self.buttons_hbox, 2, 0)
+        
         self._layout.setAlignment(Qt.AlignTop)
         self.setLayout(self._layout)
+
+    def _enable_display_buttons(self, a):
+        for i in range(1, self.buttons_hbox.count()):
+            widget = self.buttons_hbox.itemAt(i).widget()
+            widget.setEnabled(a)
+
+    def _display_summary_plot(self):
+        if not self._grid:
+            return
+        graph = self._ml_plotter.plot_grid_results_summary_graph(self._grid)
+        self.request_plot_generation.emit(graph, "summary plot")
+        return
+
+    def _display_parameter_plots(self):
+        if not self._grid:
+            return
+        graph2 = self._ml_plotter.plot_grid_results_graph(self._grid)
+        self.request_plot_generation.emit(graph2, "parameter plot")
+        return
+
+    def _display_table(self):
+        if not self._grid:
+            return
+        tbl = self._ml_plotter.plot_grid_results_table(self._grid)
+        self.request_plot_generation.emit(tbl, "grid results")
+        return
 
     def _validate_features(self):
         feature_columns = []
@@ -205,12 +246,14 @@ class FitPredictTab(QWidget):
 
         categorical = target_column in self._ds.categorical_columns
         grid = self._ml_expert.big_loop(feature_columns, target_column, test_ratio, scalers, parameters, categorical)
+        self._grid = grid
+        self._enable_display_buttons(True)
         tbl = self._ml_plotter.plot_grid_results_table(grid)
         self.request_plot_generation.emit(tbl, "grid results")
         graph = self._ml_plotter.plot_grid_results_summary_graph(grid)
-        self.request_plot_generation.emit(graph, "summary graph")
+        self.request_plot_generation.emit(graph, "summary plot")
         graph2 = self._ml_plotter.plot_grid_results_graph(grid)
-        self.request_plot_generation.emit(graph2, "detail graph")
+        self.request_plot_generation.emit(graph2, "parameter plot")
 
     def _populate_ml_parameters(self):
         selected_widget_nos = []
