@@ -15,7 +15,7 @@ class KNeighborsOptions(QWidget):
         super().__init__(parent)
         self.setWindowTitle("KNeighbors")
         self._n_neighbors_lb = QLabel("Number of Neighbors")
-        self._n_neighbors_le = QLineEdit()
+        self._n_neighbors_le = QLineEdit("1,2,3,4,5,10,20,30,40,50")
         self._n_neighbors_le.setToolTip("single number or separated by commas")
         self._options_gb = QGroupBox("Options")
         self._options_layout = QGridLayout()
@@ -54,6 +54,7 @@ class KNeighborsOptions(QWidget):
     @property
     def name(self):
         return "KNeighbors"
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

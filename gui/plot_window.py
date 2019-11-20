@@ -9,14 +9,13 @@ import matplotlib.pyplot as plt
 class PlotWindow(QWidget):
         length = 6
 
-        def __init__(self, parent=None, height=3):
+        def __init__(self, parent=None, height=3, width=6):
 
                 super().__init__(parent)
                 # self.setWindowTitle("Plotting Window")
                 # self.setFixedSize(self.length, height)
-                self.setFixedSize(6*self.physicalDpiX(), height * self.physicalDpiY())
+                self.setFixedSize(width * self.physicalDpiX(), height * self.physicalDpiY())
                 self.figure = plt.figure()
-
                 self.canvas = FigureCanvas(self.figure)
 
                 # scroll_area = QScrollArea()

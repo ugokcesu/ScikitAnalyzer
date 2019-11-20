@@ -209,7 +209,8 @@ class FitPredictTab(QWidget):
         self.request_plot_generation.emit(tbl, "grid results")
         graph = self._ml_plotter.plot_grid_results_summary_graph(grid)
         self.request_plot_generation.emit(graph, "summary graph")
-
+        graph2 = self._ml_plotter.plot_grid_results_graph(grid)
+        self.request_plot_generation.emit(graph2, "detail graph")
 
     def _populate_ml_parameters(self):
         selected_widget_nos = []

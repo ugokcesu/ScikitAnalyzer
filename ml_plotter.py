@@ -2,8 +2,10 @@ import pandas as pd
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+import numpy as np
 
-from PyQt5.QtWidgets import QTableView, QWidget, QVBoxLayout, QGridLayout, QScrollArea, QSizePolicy, QSplitter, QLabel
+from PyQt5.QtWidgets import QTableView, QWidget, QVBoxLayout, QGridLayout, QScrollArea, QSizePolicy, QSplitter, QLabel,\
+    QSpacerItem
 from PyQt5.QtCore import Qt
 
 
@@ -32,19 +34,82 @@ class MLPlotter:
         grid_results.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
         return grid_results
 
-    @staticmethod
-    def plot_grid_results_graph(grid):
+
+
+    @classmethod
+    def _extract_best_param_per_estimator(cls, df):
+        # we cannot just get rank==1, we need best rank per estimator
+        # since all are done in single gridsearch
+        estimators = df['estimator'].unique()
+        best_per_estimator = df.groupby('estimator_cat')['rank_test_score'].min()
+
+        # best_params' keys will be the different estimators
+        # and values will be the dicitonary of parameters that correspond to best run of that estimator
+        best_params = {}
+        for estimator in estimators:
+            best = {}
+            best_row = df[df['rank_test_score'] == best_per_estimator[estimator]].iloc[0]
+            for col in best_row.index:
+                if 'param_DummyEstimator__' in col and not np.isnan(best_row[col]):
+                    best[col] = best_row[col]
+                best['scaler'] = best_row['scaler']
+            best_params[estimator] = best
+        return best_params
+
+    @classmethod
+    def plot_grid_results_graph(cls, grid):
         df = pd.DataFrame(grid.cv_results_)
+        # legible names for estimator and scaler
+        df['estimator'] = df['param_DummyEstimator'].astype(str).apply(lambda x: x.split('(')[0])
+        df['estimator_cat'] = pd.Categorical(df['estimator'])
+        df['scaler'] = df['param_DummyScaler'].astype(str).apply(lambda x: x.split('(')[0])
+
         params = df.columns[df.columns.str.contains('param_')]
+
         best = grid.best_params_
-        plot_window = PlotWindow(height=3 * len(params))
-        for i, col in enumerate(params):
-            mask = MLPlotter.create_bool_mask(df, col, best)
-            ax = plot_window.figure.add_subplot(len(params), 1, i+1)
-            ax.plot(df[mask][col], df[mask].mean_test_score, label=col.split('__')[1]+'_test', linestyle='-', marker='.',color='red', linewidth=1)
-            ax.plot(df[mask][col], df[mask].mean_train_score, label=col.split('__')[1]+'_train',  linestyle='--',marker='.', color='blue', linewidth=1)
-            ax.legend(loc='best')
-        return plot_window
+        best_params = cls._extract_best_param_per_estimator(df)
+        container_widget = QWidget()
+        layout = QGridLayout()
+        container_widget.setLayout(layout)
+        counter = 0
+        for estimator in best_params.keys():
+            layout.addWidget(QLabel("Parameter Analysis for " + estimator), counter, 0)
+            counter += 1
+            plot_window = PlotWindow(height=3 * (len(best_params[estimator])-1))
+            i = 0
+            for col in best_params[estimator].keys():
+                if col == 'scaler':
+                    continue
+                i += 1
+                mask = cls._create_bool_mask(df, col, best_params[estimator])
+                ax = plot_window.figure.add_subplot(len(best_params[estimator])-1, 1, i)
+                ax.plot(df[mask][col], df[mask].mean_test_score, label=col.split('__')[1]+'_test', linestyle='-',
+                        marker='.', color='red', linewidth=1)
+                ax.plot(df[mask][col], df[mask].mean_train_score, label=col.split('__')[1]+'_train',  linestyle='--',
+                        marker='.', color='blue', linewidth=1)
+                ax.legend(loc='best')
+                ax.set_xlabel(col)
+                ax.set_ylabel('mean test score')
+                plt.tight_layout(True, rect=(0.06, 0.06, 0.98, 0.98))
+            layout.addWidget(plot_window, counter, 0)
+            best_param_lb = QLabel("Best Params for " + estimator + ":\n" +
+                                   str(best_params[estimator]).replace(',', '\n').strip('{|}'))
+            layout.addWidget(best_param_lb, counter, 1)
+            counter +=1
+        layout.addItem(QSpacerItem(1, 1), counter, 0, 1, 2)
+        layout.setRowStretch(counter, 10)
+        layout.setAlignment(Qt.AlignTop | Qt.AlignTop)
+        return container_widget
+
+    @staticmethod
+    def _create_bool_mask(df, col, best):
+        mask = pd.Series([True for i in range(df.shape[0])])
+        for key in best.keys():
+            if col.split('__')[-1] == key.split('__')[-1]:
+                continue
+            mask = mask & (df[key] == best[key])
+        mask = mask & (df['scaler'] == best['scaler'])
+        return mask
 
     @classmethod
     def plot_grid_results_summary_graph(cls, grid):
@@ -63,7 +128,8 @@ class MLPlotter:
         # cmap so we can have different color for each estimator
         cmap = matplotlib.colors.ListedColormap(cls.colors[:len(df['estimator_cat'].cat.categories)])
 
-        plot_window = PlotWindow(height=6)
+        plot_window = PlotWindow(height=4, width=9)
+
         ax = plot_window.figure.add_subplot(1, 1, 1)
 
         lines = []
@@ -75,27 +141,25 @@ class MLPlotter:
             lines.append(line)
             labels.append(scaler)
 
-        # legend gymnastics
+        # legend gymnastics in order to include marker and color patches in the legend
         for i in range(len(df['estimator_cat'].cat.categories)):
             p = mpatches.Patch(color=cls.colors[i], label=df['estimator_cat'].cat.categories[i])
             lines.append(p)
             labels.append(df['estimator_cat'].cat.categories[i])
 
-        ax.set_xlabel('run number (each run has constant estimator+parameters)')
+        ax.set_xlabel('run number \n(each run has constant estimator+parameters)')
         ax.set_ylabel('mean testing score')
         ax.set_title('GridSearchCv Summary Plot')
-        ax.legend(tuple(lines), tuple(labels), loc='upper right', bbox_to_anchor=(1.5, 0.5))
+        ax.legend(tuple(lines), tuple(labels), loc='upper left', bbox_to_anchor=(1, 1))
+        plt.tight_layout(True, rect=(0.06, 0.06, 0.98, 0.98))
+        container_widget = QWidget()
+        layout = QVBoxLayout()
+        container_widget.setLayout(layout)
+        layout.addWidget(plot_window, 0)
+        layout.addSpacerItem(QSpacerItem(1, 1))
+        layout.setStretch(1, 10)
+        return container_widget
 
-        return plot_window
-
-    @staticmethod
-    def create_bool_mask(df, col, best):
-        mask = pd.Series([True for i in range(df.shape[0])])
-        for key in best.keys():
-            if col.split('__')[-1] == key.split('__')[-1]:
-                continue
-            mask = mask & (df['param_'+key] == best[key])
-        return mask
 
     def plot_grid_results(self, grid, X_test, y_test):
         score = grid.score(X_test, y_test)

@@ -14,10 +14,10 @@ class SVOptions(QWidget):
         super().__init__(parent)
         self.setWindowTitle("SV")
         self._gamma_lb = QLabel("gamma")
-        self._gamma_le = QLineEdit()
+        self._gamma_le = QLineEdit("0.1, 1, 10, 100, 1000")
         self._gamma_le.setToolTip("float or list of comma delimited floats")
         self._c_lb = QLabel("C")
-        self._c_le = QLineEdit()
+        self._c_le = QLineEdit("0.1, 1, 10, 100, 1000")
         self._c_le.setToolTip("float or list of comma delimited floats")
 
         self._options_gb = QGroupBox("Options")

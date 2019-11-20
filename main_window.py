@@ -14,6 +14,7 @@ from gui.mdi_subwindow import MdiSubWindow
 from gui.range_slider import QRangeSlider
 from gui.plot_window import PlotWindow
 from gui.dynamic_combobox import DynamicComboBox
+from gui.mdi_area import MdiArea
 
 
 class MainWindow(QMainWindow):
@@ -32,7 +33,7 @@ class MainWindow(QMainWindow):
         self._current_dataset_name = ""
 
         # MDI SETUP
-        self.mdi_area = QMdiArea()
+        self.mdi_area = MdiArea(parent=self)
         self.setCentralWidget(self.mdi_area)
 
         self.table_sub_window = None
@@ -94,7 +95,9 @@ class MainWindow(QMainWindow):
         self.mdi_area.addSubWindow(window)
         window.setWindowTitle(title)
         window.show()
+
         self.mdi_area.tileSubWindows()
+
 
     def create_table_view(self):
         method_name = self.left_dock.dataset_load_method()
