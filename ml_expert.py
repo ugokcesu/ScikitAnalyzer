@@ -43,6 +43,20 @@ class MLExpert:
         self._logger = ScikitLogger()
         self._results_df = None
 
+    def feature_uncertainty_from_run(self, feature_columns, target_column, test_ratio, parameters, categorical):
+        X_train, X_test, y_train, y_test = self.data_splitter(test_ratio, feature_columns, target_column, categorical)
+        pipeline = self.assemble_pipeline('DummyScaler', 'DummyEstimator')
+
+        grid = GridSearchCV(pipeline, parameters, n_jobs=-2, return_train_score=True, cv=5, iid=False)
+        grid.fit(X_train, y_train)
+
+        df = pd.DataFrame(grid.cv_results_)
+
+        self._results_df = df
+        self._grid = grid
+        return self._grid, self._results_df
+        # all fitting is done, results inside grids
+
     def big_loop(self, feature_columns, target_column, test_ratio, scalers, parameters, categorical):
         X_train, X_test, y_train, y_test = self.data_splitter(test_ratio, feature_columns, target_column, categorical)
 
@@ -57,7 +71,7 @@ class MLExpert:
 
         self._results_df = df
         self._grid = grid
-        return self._grid
+        return self._grid, self._results_df
         # all fitting is done, results inside grids
 
     @classmethod
@@ -81,6 +95,7 @@ class MLExpert:
 
         pipeline = Pipeline(steps=steps)
         return pipeline
+
 
     def combine_parameters(self, scalers, parameters):
         final_list = []

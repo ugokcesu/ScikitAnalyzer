@@ -34,12 +34,9 @@ class LeftDock(QDockWidget):
         self._ml_tab = LeftDockMLTab()
 
         # Add tabs to tab widget
-
         self._tab_widget.addTab(self._data_tab, self._data_tab.windowTitle())
         self._tab_widget.addTab(self._analysis_tab, self._analysis_tab.windowTitle())
         self._tab_widget.addTab(self._ml_tab, self._ml_tab.windowTitle())
-
-        #self._tab_widget.setTabPosition(QTabWidget.West)
 
         # Set tab widget as the widget of dock widget
         self.setWidget(self._tab_widget)

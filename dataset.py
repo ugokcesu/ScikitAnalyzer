@@ -31,6 +31,7 @@ class Dataset:
         self._info_df = None
         self._categorical_columns = []
         self._numerical_columns = []
+        self._grid = None
         self.update_numericals()
 
     def update_numericals(self):
@@ -66,6 +67,10 @@ class Dataset:
 
     def description(self):
         return self._bunch.DESCR
+
+    @property
+    def grid(self):
+        return self._grid
 
     @property
     def df(self):

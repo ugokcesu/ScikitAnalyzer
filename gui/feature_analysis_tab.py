@@ -1,8 +1,10 @@
 from PyQt5.QtWidgets import QWidget, QCheckBox, QGridLayout, QLabel,  QGroupBox, QPushButton, \
-    QListWidget, QAbstractItemView,  QDoubleSpinBox,  QTabWidget, QHBoxLayout
+    QListWidget, QAbstractItemView,  QDoubleSpinBox,  QTabWidget, QHBoxLayout, QRadioButton, QButtonGroup, QSpinBox
 from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5 import QtCore
 
 import pandas as pd
+import numpy as np
 
 from gui.dynamic_combobox import DynamicComboBox
 from gui.ml_options.KNeighbors_options import KNeighborsOptions
@@ -10,19 +12,21 @@ from gui.ml_options.SV_options import SVOptions
 from gui.gui_helper import GuiHelper
 from gui.list_widget import ListWidget
 
+from scikit_logger import ScikitLogger
+
 from ml_choices import Scalers, MLClassification, MLRegression, MLWidgets, ml_2_widget_number, ml_2_widget_name
 from ml_expert import MLExpert
 from ml_plotter import MLPlotter
 
 
-class FitPredictTab(QWidget):
+class FeatureAnalysisTab(QWidget):
     request_plot_generation = pyqtSignal(QWidget, str)
-    grid_computed = pyqtSignal(object, pd.DataFrame)
+    logger = ScikitLogger()
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setObjectName("FitPredictDock")
-        self.setWindowTitle("Grid Search")
+        self.setObjectName("FeatureAnalyseDock")
+        self.setWindowTitle("Feature Analysis")
 
         # this dict will store ml parameters
         # and restore them as needed (instead of generating duplicates
@@ -32,13 +36,27 @@ class FitPredictTab(QWidget):
         self._ds_columns = []
         self._ds = None
         self._grid = None
-
+        self._df = None
 
         # data selection
-        self._data_feature_lb = QLabel("Select Features")
+        self._data_feature_lb = QLabel("Select Base Features")
         self._data_feature_list = QListWidget()
-        self._data_feature_list.setToolTip("At least 1 feature needed for running estimator")
+        self._data_feature_list.setToolTip("These features will be included in all runs")
         self._data_feature_list.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        self._data_feature_list.itemSelectionChanged.connect(self.feature_updated)
+        self._data_feature2_lb = QLabel("Select Secondary")
+        self._data_feature2_list = QListWidget()
+        self._data_feature2_list.setToolTip("These features will be added to base features\n"
+                                            " by combining them using a full factorial approach\n")
+        self._data_feature2_list.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        self._data_feature2_list.itemSelectionChanged.connect(self.feature_updated)
+
+        # sync scollbar of feature lists
+        self._data_feature_list.verticalScrollBar().valueChanged.connect(
+            self._data_feature2_list.verticalScrollBar().setValue)
+        self._data_feature2_list.verticalScrollBar().valueChanged.connect(
+            self._data_feature_list.verticalScrollBar().setValue)
+
         self._data_target_lb = QLabel("Select Target")
         self._data_target_combo = DynamicComboBox()
         self._data_target_combo.setToolTip("One column must be selected as target for running estimator")
@@ -48,17 +66,40 @@ class FitPredictTab(QWidget):
 
         self._data_layout.addWidget(self._data_feature_lb, 0, 0)
         self._data_layout.addWidget(self._data_feature_list, 1, 0)
-        self._data_layout.addWidget(self._data_target_lb, 0, 1)
-        self._data_layout.addWidget(self._data_target_combo, 1, 1)
+        self._data_layout.addWidget(self._data_feature2_lb, 0, 1)
+        self._data_layout.addWidget(self._data_feature2_list, 1, 1)
+        self._data_layout.addWidget(self._data_target_lb, 0, 2)
+        self._data_layout.addWidget(self._data_target_combo, 1, 2)
+        self._data_layout.setRowStretch(1, 10)
 
         self._data_gb = QGroupBox("Data Selection")
         self._data_gb.setLayout(self._data_layout)
         self._data_layout.setAlignment(Qt.AlignTop)
 
+        # model selection choice
+        self._choice_grid_rb = QRadioButton("Select grid results")
+        self._choice_run_no_rb = QRadioButton("Enter grid result run #")
+        self._choice_manual_rb = QRadioButton("Manual entry")
+        self._button_group = QButtonGroup()
+        self._button_group.addButton(self._choice_grid_rb, 0)
+        self._button_group.addButton(self._choice_run_no_rb, 1)
+        self._button_group.addButton(self._choice_manual_rb, 2)
+        self._button_group.buttonClicked[int].connect(self._handle_radio_click)
+        self._choice_grid_combo = DynamicComboBox()
+        self._choice_run_no_sb = QSpinBox()
+        self._choice_layout = QGridLayout()
+        self._choice_layout.addWidget(self._choice_grid_rb, 0, 0)
+        self._choice_layout.addWidget(self._choice_grid_combo, 0, 1)
+        self._choice_layout.addWidget(self._choice_run_no_rb, 1, 0)
+        self._choice_layout.addWidget(self._choice_run_no_sb, 1, 1)
+        self._choice_layout.addWidget(self._choice_manual_rb, 2, 0)
+        self._choice_box = QGroupBox("Initialize Model Using")
+        self._choice_box.setLayout(self._choice_layout)
+
         # scaling
         self._scaling_select_lb = QLabel("Select Scaler")
         self._scaling_select_list = QListWidget()
-        self._scaling_select_list.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        self._scaling_select_list.setSelectionMode(QAbstractItemView.SingleSelection)
         self._scaling_select_list.addItem("None")
         self._scaling_select_list.addItems(Scalers.all_names())
         self._grid_layout = QGridLayout()
@@ -68,7 +109,7 @@ class FitPredictTab(QWidget):
         #estimator
         self._estimator_select_lb = QLabel("Select Estimator")
         self._estimator_select_list = ListWidget()
-        self._estimator_select_list.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        self._estimator_select_list.setSelectionMode(QAbstractItemView.SingleSelection)
         self._estimator_select_list.setToolTip("An estimator must be selected to run")
         self._estimator_select_list.mouse_up.connect(self._populate_ml_parameters)
 
@@ -90,10 +131,10 @@ class FitPredictTab(QWidget):
                                     self._estimator_widgets[MLWidgets.SV.name].windowTitle())
         self._grid_layout.addWidget(self._estimator_tabs, 2, 0, 1, 2)
 
-        #p arameters
+        #parameters
         self._param_split_lb = QLabel("Test/Train Split Ratio")
         self._param_split_sp = QDoubleSpinBox()
-        #TODO: think about use of this, either remove or use
+        # TODO: think about use of this, either remove or use
         self._param_split_sp.setRange(0, 1)
         self._param_split_sp.setValue(0)
         self._param_gscv_lb = QLabel("Enable GridSearchCV")
@@ -128,11 +169,53 @@ class FitPredictTab(QWidget):
         self._layout.setAlignment(Qt.AlignTop)
 
         self._layout.addWidget(self._data_gb, 0, 0)
-        self._layout.addWidget(self._grid_gb, 1, 0)
-        self._layout.addLayout(self.buttons_hbox, 2, 0)
-        
+        self._layout.addWidget(self._choice_box, 1, 0)
+        self._layout.addWidget(self._grid_gb, 2, 0)
+        self._layout.addLayout(self.buttons_hbox, 3, 0)
+
+        self._layout.setRowStretch(0, 10)
+        self._layout.setRowStretch(1, 1)
+        self._layout.setRowStretch(2, 1)
+        self._layout.setRowStretch(3, 1)
         self._layout.setAlignment(Qt.AlignTop)
         self.setLayout(self._layout)
+
+        # initialize radio buttons
+        self._grid_choices_set_enabled(False)
+        self._choice_manual_rb.click()
+
+    def feature_updated(self):
+        if self.sender() is self._data_feature_list:
+            list1 = self._data_feature_list
+            list2 = self._data_feature2_list
+        else:
+            list1 = self._data_feature2_list
+            list2 = self._data_feature_list
+        selected = []
+        for item in list1.selectedItems():
+            selected.append(item.text())
+        selected2 = []
+        for item in list2.selectedItems():
+            selected2.append(item.text())
+            if item.text() in selected:
+                item.setSelected(False)
+
+        if self._data_target_combo.currentText() in selected + selected2:
+            self._data_target_combo.clear()
+
+    def _handle_radio_click(self, btn_id):
+        if btn_id == 0:
+            self._choice_grid_combo.setEnabled(True)
+            self._choice_run_no_sb.setEnabled(False)
+            self._grid_gb.setEnabled(False)
+        if btn_id == 1:
+            self._choice_grid_combo.setEnabled(False)
+            self._choice_run_no_sb.setEnabled(True)
+            self._grid_gb.setEnabled(False)
+        elif btn_id == 2:
+            self._choice_grid_combo.setEnabled(False)
+            self._choice_run_no_sb.setEnabled(False)
+            self._grid_gb.setEnabled(True)
 
     def _enable_display_buttons(self, a):
         for i in range(1, self.buttons_hbox.count()):
@@ -220,28 +303,71 @@ class FitPredictTab(QWidget):
         target_column = self._validate_target()
         if not target_column:
             return
-        ml = self._validate_ml()
-        if not ml:
-            return
         test_ratio = self._param_split_sp.value()
 
-        scalers = self._validate_scaler()
-        parameters = self._validate_parameters(ml)
-        if parameters is None:
-            return
+        if self._button_group.checkedId() == 2:
+            ml = self._validate_ml()
+            if not ml:
+                return
+            scalers = self._validate_scaler()
+            parameters = self._validate_parameters(ml)
+            if parameters is None:
+                return
 
-        # do the run
+        if self._button_group.checkedId() == -1:
+            raise ValueError("Initialize Model Using cannot be unselected")
+        run = -1
+        if self._button_group.checkedId() == 0:
+            run = self._choice_grid_combo.currentData()
+            row = self._validate_run_no(run)
+            if row is None:
+                return
+            parameters = self._get_parameters_from_run(row)
+        if self._button_group.checkedId() == 1:
+            run = self._choice_run_no_sb.value()
+            row = self._validate_run_no(run)
+            if rowis None:
+                return
+
+        #do the run
         categorical = target_column in self._ds.categorical_columns
-        grid, df = self._ml_expert.big_loop(feature_columns, target_column, test_ratio, scalers, parameters, categorical)
-
+        if self._button_group.checkedId() == 0 or self._button_group.checkedId() == 1:
+            parameters = self._get_parameters_from_run(row)
+            grid, df = self._ml_expert. feature_uncertainty_from_run(feature_columns, target_column, test_ratio, parameters, categorical)
+        else:
+            grid, df = self._ml_expert.big_loop(feature_columns, target_column, test_ratio, scalers, parameters, categorical)
+            self._grid = grid
         # update self
         self._grid = grid
         self._enable_display_buttons(True)
-        self.grid_computed.emit(grid, df)
+
         # generate results
         self._display_table()
         self._display_summary_plot()
         self._display_parameter_plots()
+
+    def _validate_run_no(self, run_no):
+        if self._df is None:
+            return None
+        try:
+            run = self._df.iloc[run_no]
+        except KeyError as e:
+            self.logger.error(e)
+            return None
+        return run
+
+    def _get_parameters_from_run(self, row):
+        params = {}
+        params['DummyEstimator'] = [row['param_DummyEstimator']]
+        params['DummyScaler'] = [row['param_DummyScaler']]
+        for name in row.index:
+            if ('param_DummyEstimator__' in name) and (not np.isnan(row[name])):
+                params[name.replace('param_', '')] = [row[name]]
+        return params
+
+
+
+
 
     def _populate_ml_parameters(self):
         selected_widget_nos = []
@@ -269,9 +395,15 @@ class FitPredictTab(QWidget):
     def fill_target_combo(self):
         self._data_target_combo.clear()
         item_count = self._data_feature_list.count()
+        not_in_1 = []
         for i in range(item_count):
             item = self._data_feature_list.item(i)
             if not item.isSelected():
+                not_in_1.append(item.text())
+        item_count = self._data_feature2_list.count()
+        for i in range(item_count):
+            item = self._data_feature2_list.item(i)
+            if not item.isSelected() and (item.text() in not_in_1):
                 self._data_target_combo.addItem(item.text())
 
     def dataset_opened(self, ds=None, _=None):
@@ -282,15 +414,40 @@ class FitPredictTab(QWidget):
         self._ml_expert = MLExpert(self._ds)
         self._ds_columns = self._ds.column_names()
         self._data_feature_list.clear()
+        self._data_feature2_list.clear()
         self._data_target_combo.clear()
+
         self._data_target_combo.addItem("")
         self._data_target_combo.setCurrentIndex(0)
         self._data_feature_list.addItems(self._ds_columns)
+        self._data_feature2_list.addItems(self._ds_columns)
 
     def update_upon_closing_dataset(self):
         self.setDisabled(True)
         self._ds_columns = []
-        self._grid = None
-        self._enable_display_buttons(False)
 
+    # slot, signal comes from fit_predict -> left_dock_ml -> feature_analysis
+    def update_grid(self, grid, df):
+        self._grid = grid
+        self._df = df
+        self._grid_choices_set_enabled(True)
+        self._choice_run_no_sb.setRange(0, len(grid.cv_results_['mean_test_score'])-1)
+
+        #TODO: maybe do these in ml_expert and store in dataset?
+        df = pd.DataFrame(grid.cv_results_)
+        # legible names for estimator and scaler
+        df['estimator'] = df['param_DummyEstimator'].astype(str).apply(lambda x: x.split('(')[0])
+        df['best_rank_per_estimator'] = df.groupby('estimator')['rank_test_score'].transform(min)
+        df_bests = df[df.best_rank_per_estimator == df.rank_test_score]
+        estimators = df['estimator'].unique()
+        self._choice_grid_combo.clear()
+        for estimator in estimators:
+            best_row = df_bests[df_bests.estimator == estimator].index[0]
+            text = "Best {}, row={}, score={:.2f}".format(
+                estimator, str(best_row), df.iloc[best_row]['mean_test_score'])
+            self._choice_grid_combo.addItem(text, best_row)
+
+    def _grid_choices_set_enabled(self, a):
+        self._choice_grid_rb.setEnabled(a)
+        self._choice_run_no_rb.setEnabled(a)
 
