@@ -64,7 +64,8 @@ class MLExpert:
 
         combined_parameters = self.combine_parameters(scalers, parameters)
 
-        grid = GridSearchCV(pipeline, combined_parameters, n_jobs=-2, return_train_score=True, cv=5, iid=False)
+        grid = GridSearchCV(pipeline, combined_parameters, n_jobs=-2, return_train_score=True, cv=5,
+                            iid=False, error_score='raise')
         grid.fit(X_train, y_train)
 
         df = pd.DataFrame(grid.cv_results_)
@@ -95,7 +96,6 @@ class MLExpert:
 
         pipeline = Pipeline(steps=steps)
         return pipeline
-
 
     def combine_parameters(self, scalers, parameters):
         final_list = []

@@ -1,10 +1,12 @@
+from copy import deepcopy
+import pandas as pd
+import numpy as np
+
 from PyQt5.QtWidgets import QWidget, QCheckBox, QGridLayout, QLabel,  QGroupBox, QPushButton, \
     QListWidget, QAbstractItemView,  QDoubleSpinBox,  QTabWidget, QHBoxLayout, QRadioButton, QButtonGroup, QSpinBox
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5 import QtCore
 
-import pandas as pd
-import numpy as np
 
 from gui.dynamic_combobox import DynamicComboBox
 from gui.ml_options.KNeighbors_options import KNeighborsOptions
@@ -39,6 +41,7 @@ class FeatureAnalysisTab(QWidget):
         self._df = None
 
         # data selection
+        self._data_info_lb = QLabel("")
         self._data_feature_lb = QLabel("Select Base Features")
         self._data_feature_list = QListWidget()
         self._data_feature_list.setToolTip("These features will be included in all runs")
@@ -64,13 +67,14 @@ class FeatureAnalysisTab(QWidget):
         self._data_target_combo.currentTextChanged.connect(self.fill_estimator_list)
         self._data_layout = QGridLayout()
 
-        self._data_layout.addWidget(self._data_feature_lb, 0, 0)
-        self._data_layout.addWidget(self._data_feature_list, 1, 0)
-        self._data_layout.addWidget(self._data_feature2_lb, 0, 1)
-        self._data_layout.addWidget(self._data_feature2_list, 1, 1)
-        self._data_layout.addWidget(self._data_target_lb, 0, 2)
-        self._data_layout.addWidget(self._data_target_combo, 1, 2)
-        self._data_layout.setRowStretch(1, 10)
+        self._data_layout.addWidget(self._data_info_lb, 0, 0, 1, 2)
+        self._data_layout.addWidget(self._data_feature_lb, 1, 0)
+        self._data_layout.addWidget(self._data_feature_list, 2, 0)
+        self._data_layout.addWidget(self._data_feature2_lb, 1, 1)
+        self._data_layout.addWidget(self._data_feature2_list, 2, 1)
+        self._data_layout.addWidget(self._data_target_lb, 1, 2)
+        self._data_layout.addWidget(self._data_target_combo, 2, 2)
+        self._data_layout.setRowStretch(2, 10)
 
         self._data_gb = QGroupBox("Data Selection")
         self._data_gb.setLayout(self._data_layout)
@@ -184,6 +188,7 @@ class FeatureAnalysisTab(QWidget):
         self._grid_choices_set_enabled(False)
         self._choice_manual_rb.click()
 
+
     def feature_updated(self):
         if self.sender() is self._data_feature_list:
             list1 = self._data_feature_list
@@ -202,6 +207,15 @@ class FeatureAnalysisTab(QWidget):
 
         if self._data_target_combo.currentText() in selected + selected2:
             self._data_target_combo.clear()
+
+        self.update_info_label()
+
+    def update_info_label(self):
+        nb = len(self._data_feature2_list.selectedItems())
+        if nb == 0:
+            self._data_info_lb.setText("No secondary features selected")
+        else:
+            self._data_info_lb.setText("{} secondary features selected = {} runs".format(nb, 2**nb - 1))
 
     def _handle_radio_click(self, btn_id):
         if btn_id == 0:
@@ -246,6 +260,19 @@ class FeatureAnalysisTab(QWidget):
     def _validate_features(self):
         feature_columns = []
         for item in self._data_feature_list.selectedItems():
+            feature_columns.append(item.text())
+        # allow to be None
+        # if not feature_columns:
+        #    GuiHelper.point_to_error(self._data_feature_list)
+        #    return None
+        for col in feature_columns:
+            if col not in self._ds_columns:
+                raise KeyError('selected column ({}) name not in dataframe'.format(col))
+        return feature_columns
+
+    def _validate_features2(self):
+        feature_columns = []
+        for item in self._data_feature2_list.selectedItems():
             feature_columns.append(item.text())
         if not feature_columns:
             GuiHelper.point_to_error(self._data_feature_list)
@@ -292,13 +319,23 @@ class FeatureAnalysisTab(QWidget):
                 # so that the widgets validate function can show issue to user
                 self._estimator_tabs.setCurrentWidget(self._estimator_widgets[widget_name])
                 return None
+            # this part is different than fit_predict
+            # we need to have only 1 value for each param
+            # so, take first
+            for key, val in param.items():
+                if isinstance(val, list):
+                    param[key] = [val[0]]
+
             parameters[algo_name] = param
         return parameters
 
     def _run(self):
         # check columns
-        feature_columns = self._validate_features()
-        if not feature_columns:
+        # note: it is ok for base feature to be empty
+        # intended use is for feature2 to NOT be empty so you can uncertainty analysis
+        base_columns = self._validate_features()
+        secondary_columns = self._validate_features2()
+        if not secondary_columns:
             return
         target_column = self._validate_target()
         if not target_column:
@@ -326,25 +363,38 @@ class FeatureAnalysisTab(QWidget):
         if self._button_group.checkedId() == 1:
             run = self._choice_run_no_sb.value()
             row = self._validate_run_no(run)
-            if rowis None:
+            if row is None:
                 return
+
+        # combine secondary features
+        feature_run_list = []
+        secondary_combinations = self.full_factorial_combination(secondary_columns, [[]])
+        print("secondary columns: {}".format(secondary_columns))
+        print("factorial: {}".format(secondary_combinations))
+        print("base columns: {}".format(base_columns))
+
+        if len(base_columns) > 0:
+            for item in secondary_combinations:
+
+                feature_run_list.append(deepcopy(base_columns))
+                feature_run_list[-1].extend(item)
+        else:
+            feature_run_list = secondary_combinations
+        print("combined? ", feature_run_list)
+
 
         #do the run
         categorical = target_column in self._ds.categorical_columns
         if self._button_group.checkedId() == 0 or self._button_group.checkedId() == 1:
             parameters = self._get_parameters_from_run(row)
-            grid, df = self._ml_expert. feature_uncertainty_from_run(feature_columns, target_column, test_ratio, parameters, categorical)
+            grid, df = self._ml_expert.feature_uncertainty_from_run(feature_run_list, target_column, test_ratio, parameters, categorical)
         else:
-            grid, df = self._ml_expert.big_loop(feature_columns, target_column, test_ratio, scalers, parameters, categorical)
+            grid, df = self._ml_expert.big_loop(feature_run_list, target_column, test_ratio, scalers, parameters, categorical)
             self._grid = grid
         # update self
         self._grid = grid
-        self._enable_display_buttons(True)
 
         # generate results
-        self._display_table()
-        self._display_summary_plot()
-        self._display_parameter_plots()
 
     def _validate_run_no(self, run_no):
         if self._df is None:
@@ -356,6 +406,18 @@ class FeatureAnalysisTab(QWidget):
             return None
         return run
 
+    def full_factorial_combination(self, columns, result=[[]]):
+        temp_result = []
+        if len(columns) == 0:
+            return result[1:]
+
+        for j in range(len(result)):
+            temp_result.append(deepcopy(result[j]))
+            temp_result[-1].append(columns[0])
+
+        result.extend(temp_result)
+        return self.full_factorial_combination(columns[1:], result)
+
     def _get_parameters_from_run(self, row):
         params = {}
         params['DummyEstimator'] = [row['param_DummyEstimator']]
@@ -364,10 +426,6 @@ class FeatureAnalysisTab(QWidget):
             if ('param_DummyEstimator__' in name) and (not np.isnan(row[name])):
                 params[name.replace('param_', '')] = [row[name]]
         return params
-
-
-
-
 
     def _populate_ml_parameters(self):
         selected_widget_nos = []
