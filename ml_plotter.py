@@ -44,9 +44,22 @@ class MLPlotter:
         grid_results.setAlternatingRowColors(True)
         grid_results.setModel(model)
         grid_results.setWindowTitle("Grid Results")
-        grid_results.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
+        grid_results.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         return grid_results
 
+    @classmethod
+    def plot_feat_unc_table(cls, df, scaler, params):
+        df = df[['mean_test_score', 'mean_train_score', 'columns']].sort_values(by='mean_test_score')
+        table = cls.plot_df_results_table(df)
+        window = QWidget()
+        layout = QVBoxLayout()
+        lb = QLabel("All runs made with scaler= {}, and parameters= {}".format(scaler, params))
+        layout.addWidget(lb)
+        layout.addWidget(table)
+        layout.setAlignment(Qt.AlignTop)
+        window.setLayout(layout)
+        lb.setFixedHeight(lb.sizeHint().height())
+        return window
 
     @classmethod
     def _extract_best_param_per_estimator(cls, df):

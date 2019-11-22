@@ -3,7 +3,9 @@ import pandas as pd
 import numpy as np
 
 from PyQt5.QtWidgets import QWidget, QCheckBox, QGridLayout, QLabel,  QGroupBox, QPushButton, \
-    QListWidget, QAbstractItemView,  QDoubleSpinBox,  QTabWidget, QHBoxLayout, QRadioButton, QButtonGroup, QSpinBox
+    QListWidget, QAbstractItemView,  QDoubleSpinBox,  QTabWidget, QHBoxLayout, QRadioButton, QButtonGroup, QSpinBox,\
+    QVBoxLayout
+from PyQt5.Qt import QSizePolicy
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5 import QtCore
 
@@ -379,24 +381,19 @@ class FeatureAnalysisTab(QWidget):
             feature_run_list = secondary_combinations
         elif base_columns:
             feature_run_list = [base_columns]
-        print("combined? ", feature_run_list)
 
         #do the run
         categorical = target_column in self._ds.categorical_columns
         if self._button_group.checkedId() == 0 or self._button_group.checkedId() == 1:
             scalers, parameters = self._get_parameters_from_run(row)
-            #grid, df = self._ml_expert.feature_uncertainty_from_run(feature_run_list, target_column, test_ratio, parameters, categorical)
-            df = self._ml_expert.feature_uncertainty_loop(feature_run_list, target_column, test_ratio, scalers, parameters, categorical)
-        else:
-            df = self._ml_expert.feature_uncertainty_loop(feature_run_list, target_column, test_ratio, scalers, parameters, categorical)
+
+        df = self._ml_expert.feature_uncertainty_loop(feature_run_list, target_column, test_ratio, scalers, parameters, categorical)
 
         # update self
         self._feat_unc_df = df
-
         # generate results
-        window = self._ml_plotter.plot_df_results_table(self._feat_unc_df)
+        window = self._ml_plotter.plot_feat_unc_table(self._feat_unc_df, scalers[0], parameters)
         self.request_plot_generation.emit(window, "Feature Uncertainty Analysis Table")
-
 
     def _validate_run_no(self, run_no):
         if self._df is None:
