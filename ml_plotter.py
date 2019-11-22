@@ -34,6 +34,18 @@ class MLPlotter:
         grid_results.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
         return grid_results
 
+    @staticmethod
+    def plot_df_results_table(df):
+        # filter some columns
+        df = df.loc[:, ~(df.columns.str.contains("time|split"))]
+        model = DatasetModel(dataFrame=df)
+        df.to_csv("df.csv")
+        grid_results = QTableView()
+        grid_results.setAlternatingRowColors(True)
+        grid_results.setModel(model)
+        grid_results.setWindowTitle("Grid Results")
+        grid_results.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
+        return grid_results
 
 
     @classmethod

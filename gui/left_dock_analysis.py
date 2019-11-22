@@ -34,6 +34,7 @@ class LeftDockAnalysisTab(QWidget):
 
         self._tab_widget.addTab(self._data_analysis_tab, self._data_analysis_tab.windowTitle())
         self._tab_widget.addTab(self._data_analysis_tab_multi, self._data_analysis_tab_multi.windowTitle())
+        self._tab_widget.tabBar().setTabEnabled(1, False)
 
         self.close_dataset.connect(self._data_analysis_tab.update_upon_closing_dataset)
         self.close_dataset.connect(self._data_analysis_tab_multi.update_upon_closing_dataset)
@@ -49,6 +50,10 @@ class LeftDockAnalysisTab(QWidget):
         # outgoing signals to children
         self.dataset_opened.connect(self._data_analysis_tab.dataset_opened)
         self.dataset_opened.connect(self._data_analysis_tab_multi.dataset_opened)
+        self.info_calculated.connect(self.enable_multi_tab)
+
+    def enable_multi_tab(self):
+        self._tab_widget.tabBar().setTabEnabled(1, True)
 
     def update_analysis_tab_with_window_state(self, state):
         return self._data_analysis_tab.update_self_with_window_state(state)

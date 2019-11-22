@@ -188,7 +188,6 @@ class FeatureAnalysisTab(QWidget):
         self._grid_choices_set_enabled(False)
         self._choice_manual_rb.click()
 
-
     def feature_updated(self):
         if self.sender() is self._data_feature_list:
             list1 = self._data_feature_list
@@ -275,7 +274,7 @@ class FeatureAnalysisTab(QWidget):
         for item in self._data_feature2_list.selectedItems():
             feature_columns.append(item.text())
         if not feature_columns:
-            GuiHelper.point_to_error(self._data_feature_list)
+        #    GuiHelper.point_to_error(self._data_feature2_list)
             return None
         for col in feature_columns:
             if col not in self._ds_columns:
@@ -335,7 +334,7 @@ class FeatureAnalysisTab(QWidget):
         # intended use is for feature2 to NOT be empty so you can uncertainty analysis
         base_columns = self._validate_features()
         secondary_columns = self._validate_features2()
-        if not secondary_columns:
+        if not secondary_columns and not base_columns:
             return
         target_column = self._validate_target()
         if not target_column:
@@ -359,7 +358,7 @@ class FeatureAnalysisTab(QWidget):
             row = self._validate_run_no(run)
             if row is None:
                 return
-            parameters = self._get_parameters_from_run(row)
+
         if self._button_group.checkedId() == 1:
             run = self._choice_run_no_sb.value()
             row = self._validate_run_no(run)
@@ -368,33 +367,36 @@ class FeatureAnalysisTab(QWidget):
 
         # combine secondary features
         feature_run_list = []
-        secondary_combinations = self.full_factorial_combination(secondary_columns, [[]])
-        print("secondary columns: {}".format(secondary_columns))
-        print("factorial: {}".format(secondary_combinations))
-        print("base columns: {}".format(base_columns))
+        if secondary_columns:
+            secondary_combinations = self.full_factorial_combination(secondary_columns, [[]])
 
-        if len(base_columns) > 0:
+
+        if base_columns and secondary_columns:
             for item in secondary_combinations:
-
                 feature_run_list.append(deepcopy(base_columns))
                 feature_run_list[-1].extend(item)
-        else:
+        elif secondary_columns:
             feature_run_list = secondary_combinations
+        elif base_columns:
+            feature_run_list = [base_columns]
         print("combined? ", feature_run_list)
-
 
         #do the run
         categorical = target_column in self._ds.categorical_columns
         if self._button_group.checkedId() == 0 or self._button_group.checkedId() == 1:
-            parameters = self._get_parameters_from_run(row)
-            grid, df = self._ml_expert.feature_uncertainty_from_run(feature_run_list, target_column, test_ratio, parameters, categorical)
+            scalers, parameters = self._get_parameters_from_run(row)
+            #grid, df = self._ml_expert.feature_uncertainty_from_run(feature_run_list, target_column, test_ratio, parameters, categorical)
+            df = self._ml_expert.feature_uncertainty_loop(feature_run_list, target_column, test_ratio, scalers, parameters, categorical)
         else:
-            grid, df = self._ml_expert.big_loop(feature_run_list, target_column, test_ratio, scalers, parameters, categorical)
-            self._grid = grid
+            df = self._ml_expert.feature_uncertainty_loop(feature_run_list, target_column, test_ratio, scalers, parameters, categorical)
+
         # update self
-        self._grid = grid
+        self._feat_unc_df = df
 
         # generate results
+        window = self._ml_plotter.plot_df_results_table(self._feat_unc_df)
+        self.request_plot_generation.emit(window, "Feature Uncertainty Analysis Table")
+
 
     def _validate_run_no(self, run_no):
         if self._df is None:
@@ -420,12 +422,15 @@ class FeatureAnalysisTab(QWidget):
 
     def _get_parameters_from_run(self, row):
         params = {}
-        params['DummyEstimator'] = [row['param_DummyEstimator']]
-        params['DummyScaler'] = [row['param_DummyScaler']]
+        ml = str(row['param_DummyEstimator']).split("(")[0]
+
+        scaler = [str(row['param_DummyScaler']).split("(")[0]]
         for name in row.index:
             if ('param_DummyEstimator__' in name) and (not np.isnan(row[name])):
-                params[name.replace('param_', '')] = [row[name]]
-        return params
+                params[name.replace('param_DummyEstimator__', '')] = [row[name]]
+        parameters = {}
+        parameters[ml] = params
+        return scaler, parameters
 
     def _populate_ml_parameters(self):
         selected_widget_nos = []
