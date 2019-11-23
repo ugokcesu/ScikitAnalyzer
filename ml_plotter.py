@@ -10,6 +10,7 @@ from PyQt5.QtCore import Qt
 
 
 from dataset_model import DatasetModel
+from color_by_val_model import ColorByValModel
 from uncertainty_table_model import UncertaintyTableModel
 from gui.plot_window import PlotWindow
 
@@ -27,7 +28,6 @@ class MLPlotter:
         # filter some columns
         df = df.loc[:, ~(df.columns.str.contains("time|split"))]
         model = DatasetModel(dataFrame=df)
-        df.to_csv("df.csv")
         grid_results = QTableView()
         grid_results.setAlternatingRowColors(True)
         grid_results.setModel(model)
@@ -36,11 +36,22 @@ class MLPlotter:
         return grid_results
 
     @staticmethod
+    def value_added_table(val_added_df):
+        val_added_series = val_added_df.mean()
+        val_added_df = pd.DataFrame({'Features':val_added_series.index, 'Value Added':val_added_series.values})
+        val_added_df.sort_values(inplace=True, by='Value Added')
+        model = ColorByValModel(dataFrame=val_added_df)
+        table = QTableView()
+        table.setModel(model)
+        table.setWindowTitle("Value Added Table")
+        table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        return table
+
+    @staticmethod
     def plot_df_results_table(df, base, secondary):
         # filter some columns
         df = df.loc[:, ~(df.columns.str.contains("time|split"))]
         model = UncertaintyTableModel(base, secondary, dataFrame=df)
-        df.to_csv("df.csv")
         grid_results = QTableView()
         grid_results.setAlternatingRowColors(True)
         grid_results.setModel(model)
@@ -184,7 +195,6 @@ class MLPlotter:
         layout.addSpacerItem(QSpacerItem(1, 1))
         layout.setStretch(1, 10)
         return container_widget
-
 
     def plot_grid_results(self, grid, X_test, y_test):
         score = grid.score(X_test, y_test)

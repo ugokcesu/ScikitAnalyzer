@@ -395,6 +395,10 @@ class FeatureAnalysisTab(QWidget):
         window = self._ml_plotter.plot_feat_unc_table(self._feat_unc_df, scalers[0], parameters, base_columns, secondary_columns)
         self.request_plot_generation.emit(window, "Feature Uncertainty Analysis Table")
 
+        val_added_dict = self._ml_expert.compute_added_value(self._feat_unc_df, secondary_columns, feature_run_list)
+        table = self._ml_plotter.value_added_table(pd.DataFrame(val_added_dict))
+        self.request_plot_generation.emit(table, "Value Added Table")
+
     def _validate_run_no(self, run_no):
         if self._df is None:
             return None

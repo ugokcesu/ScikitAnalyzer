@@ -10,6 +10,7 @@ from sklearn.model_selection import GridSearchCV
 import pandas as pd
 import numpy as np
 from copy import deepcopy
+from collections import defaultdict
 
 from ml_choices import MLRegression, MLClassification, Scalers
 from scikit_logger import ScikitLogger
@@ -45,8 +46,6 @@ class MLExpert:
         self._grid = None
         self._logger = ScikitLogger()
         self._results_df = None
-
-
 
     def big_loop(self, feature_columns, target_column, test_ratio, scalers, parameters, categorical):
         #X_train, X_test, y_train, y_test = self.data_splitter(test_ratio, feature_columns, target_column, categorical)
@@ -100,9 +99,30 @@ class MLExpert:
             df_list.append(df)
         df_results = pd.concat(df_list)
         df_results = df_results.reset_index(drop=True)
-        df_results.to_csv('unc_feat.csv')
         return df_results
         # all fitting is done, results inside grids
+
+    @staticmethod
+    def compute_added_value(unc_df, secondary, all_combinations):
+        #unc_df = unc_df.reset_index(drop=True)
+        val_added = defaultdict(list)
+        for feature in secondary:
+            for combination in all_combinations:
+                if feature in combination:
+                    #if the only feature in combination is feature, skip it
+                    if len(combination) == 1:
+                        continue
+                    # else, compute score with and without feature
+                    idx = unc_df[unc_df['columns'].apply(lambda x: x == combination)].index[0]
+                    score_w_feat = unc_df.iloc[idx]['mean_test_score']
+                    combin_wo_feat = deepcopy(combination)
+                    combin_wo_feat.remove(feature)
+                    idx = unc_df[unc_df['columns'].apply(lambda x: x == combin_wo_feat)].index[0]
+                    score_wo_feat = unc_df.iloc[idx]['mean_test_score']
+                    value_added = score_w_feat - score_wo_feat
+                    val_added[feature].append(value_added)
+        return val_added
+
 
     @classmethod
     def class_factory(cls, class_name):

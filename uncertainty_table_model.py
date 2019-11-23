@@ -39,7 +39,7 @@ class UncertaintyTableModel(QtGui.QStandardItemModel):
         max_row = self._data['mean_test_score'].idxmax()
         min_row = self._data['mean_test_score'].idxmin()
         if self._base:
-            base_row = self._data[self._data['columns'].apply(lambda x: x==self._base)].index[0]
+            base_row = self._data[self._data['columns'].apply(lambda x: x == self._base)].index[0]
             base = self.takeRow(base_row)
             for item in base:
                 item.setBackground(Qt.blue)
