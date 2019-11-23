@@ -94,7 +94,7 @@ class DataAnalysisTabMulti(QWidget):
 
     # connect to dataLoader tab's close_ds method
     def update_upon_closing_dataset(self):
-        self.setDisabled(True)
+        # self.setDisabled(True)
         self.sort_by.clear()
         self._hist_X.clear()
         self._hist_Y.clear()
