@@ -372,8 +372,8 @@ class FeatureAnalysisTab(QWidget):
         if secondary_columns:
             secondary_combinations = self.full_factorial_combination(secondary_columns, [[]])
 
-
         if base_columns and secondary_columns:
+            feature_run_list.append(deepcopy(base_columns))
             for item in secondary_combinations:
                 feature_run_list.append(deepcopy(base_columns))
                 feature_run_list[-1].extend(item)
@@ -392,7 +392,7 @@ class FeatureAnalysisTab(QWidget):
         # update self
         self._feat_unc_df = df
         # generate results
-        window = self._ml_plotter.plot_feat_unc_table(self._feat_unc_df, scalers[0], parameters)
+        window = self._ml_plotter.plot_feat_unc_table(self._feat_unc_df, scalers[0], parameters, base_columns, secondary_columns)
         self.request_plot_generation.emit(window, "Feature Uncertainty Analysis Table")
 
     def _validate_run_no(self, run_no):

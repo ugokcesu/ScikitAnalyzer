@@ -10,6 +10,7 @@ from PyQt5.QtCore import Qt
 
 
 from dataset_model import DatasetModel
+from uncertainty_table_model import UncertaintyTableModel
 from gui.plot_window import PlotWindow
 
 
@@ -35,10 +36,10 @@ class MLPlotter:
         return grid_results
 
     @staticmethod
-    def plot_df_results_table(df):
+    def plot_df_results_table(df, base, secondary):
         # filter some columns
         df = df.loc[:, ~(df.columns.str.contains("time|split"))]
-        model = DatasetModel(dataFrame=df)
+        model = UncertaintyTableModel(base, secondary, dataFrame=df)
         df.to_csv("df.csv")
         grid_results = QTableView()
         grid_results.setAlternatingRowColors(True)
@@ -48,9 +49,11 @@ class MLPlotter:
         return grid_results
 
     @classmethod
-    def plot_feat_unc_table(cls, df, scaler, params):
-        df = df[['mean_test_score', 'mean_train_score', 'columns']].sort_values(by='mean_test_score')
-        table = cls.plot_df_results_table(df)
+    def plot_feat_unc_table(cls, df, scaler, params, base, secondary):
+        df = df[['mean_test_score', 'mean_train_score', 'columns']].\
+            sort_values(by='mean_test_score').reset_index(drop=True)
+        table = cls.plot_df_results_table(df, base, secondary)
+        table.horizontalHeader().setStretchLastSection(True)
         window = QWidget()
         layout = QVBoxLayout()
         lb = QLabel("All runs made with scaler= {}, and parameters= {}".format(scaler, params))

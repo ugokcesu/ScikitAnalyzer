@@ -99,6 +99,8 @@ class MLExpert:
             df['columns'] = [cols for _ in range(len(df))]
             df_list.append(df)
         df_results = pd.concat(df_list)
+        df_results = df_results.reset_index(drop=True)
+        df_results.to_csv('unc_feat.csv')
         return df_results
         # all fitting is done, results inside grids
 

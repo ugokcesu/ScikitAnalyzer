@@ -23,6 +23,7 @@ class DataLoaderTab(QWidget):
         self._dataset_list.addItems(self.list_datasets())
         self._load_btn = QPushButton("Load")
         self._close_btn = QPushButton("Close")
+        self._close_btn.setDisabled(True)
         # New Dataset loading layout
         self._loading_layout = QHBoxLayout()
         self._loading_layout.addWidget(self._dataset_list, 0)
