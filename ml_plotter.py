@@ -183,8 +183,13 @@ class MLPlotter:
             lines.append(p)
             labels.append(df['estimator_cat'].cat.categories[i])
 
-        ax.set_xlabel('run number \n(each run has constant estimator+parameters)')
+        ax.set_xlabel('runs \n(each run has constant estimator+parameters)')
         ax.set_ylabel('mean testing score')
+        minor_ticks = np.arange(0, df['est_w_param'].max())
+        ax.set_xticks(minor_ticks, minor=True)
+        ax.xaxis.grid(which='minor', alpha=0.5)
+
+
         ax.set_title('GridSearchCv Summary Plot')
         ax.legend(tuple(lines), tuple(labels), loc='upper left', bbox_to_anchor=(1, 1))
         plt.tight_layout(True, rect=(0.06, 0.06, 0.98, 0.98))

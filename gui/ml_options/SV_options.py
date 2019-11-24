@@ -38,7 +38,7 @@ class SVOptions(QWidget):
             numbers = list(map(pd.to_numeric, values))
         except Exception:
             self.logger.exception("{} must be floats or floats separated by commas".format(widget.objectName()))
-            SVOptions.point_to_error(widget)
+            GuiHelper.point_to_error(widget)
             return False
         return True
 
