@@ -285,7 +285,7 @@ class FitPredictTab(QWidget):
         self._data_target_combo.clear()
         self._data_target_combo.addItem("")
         self._data_target_combo.setCurrentIndex(0)
-        self._data_feature_list.addItems(self._ds_columns)
+        self._data_feature_list.addItems(self._ds.numerical_columns)
 
     def update_upon_closing_dataset(self):
         self.setDisabled(True)

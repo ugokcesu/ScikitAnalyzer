@@ -14,7 +14,7 @@ from collections import defaultdict
 
 from ml_choices import MLRegression, MLClassification, Scalers
 from scikit_logger import ScikitLogger
-
+from scikit_logger import ScikitLogger
 
 class DummyEstimator(BaseEstimator):
     def fit(self):
@@ -41,6 +41,7 @@ class NoneScaler(BaseEstimator, TransformerMixin):
 
 
 class MLExpert:
+    logger = ScikitLogger()
     def __init__(self, ds):
         self._ds = ds
         self._grid = None
@@ -65,7 +66,12 @@ class MLExpert:
 
         grid = GridSearchCV(pipeline, combined_parameters, n_jobs=-2, return_train_score=True, cv=cv,
                             iid=False, error_score='raise')
-        grid.fit(X_train, y_train)
+        # parameters validated, but still scikit may throw an exception
+        try:
+            grid.fit(X_train, y_train)
+        except Exception as e:
+            self.logger.exception(e)
+            return None
 
         df = pd.DataFrame(grid.cv_results_)
 
@@ -93,7 +99,11 @@ class MLExpert:
             X_train = self._ds.df[cols]
             if len(cols) == 1:
                 X_train.values.reshape(-1, 1)
-            grid.fit(X_train, y_train)
+            try:
+                grid.fit(X_train, y_train)
+            except Exception as e:
+                self.logger.exception(e)
+                return None
             df = pd.DataFrame(grid.cv_results_)
             df['columns'] = [cols for _ in range(len(df))]
             df_list.append(df)

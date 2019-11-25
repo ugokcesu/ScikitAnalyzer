@@ -39,8 +39,17 @@ class FeatureAnalysisTab(QWidget):
         self._ml_plotter = MLPlotter()
         self._ds_columns = []
         self._ds = None
-        self._grid = None
+        self._feat_unc_df = None
         self._df = None
+
+        self._feature_run_list = None
+        self._target_column = None
+        self._test_ratio = None
+        self._scalers = None
+        self._parameters = None
+        self._categorical = None
+        self._base_columns = None
+        self._secondary_columns = None
 
         # data selection
         self._data_info_lb = QLabel("")
@@ -157,18 +166,16 @@ class FeatureAnalysisTab(QWidget):
 
         self._run_btn = QPushButton("Run")
         self._run_btn.clicked.connect(self._run)
-        self._display_table_btn = QPushButton("Show results table")
-        self._display_table_btn.clicked.connect(self._display_table)
-        self._display_summary_plot_btn = QPushButton("Show summary plot")
-        self._display_summary_plot_btn.clicked.connect(self._display_summary_plot)
-        self._display_parameter_plots_btn = QPushButton("Show parameter plots")
-        self._display_parameter_plots_btn.clicked.connect(self._display_parameter_plots)
+        self._display_run_table_btn = QPushButton("Show run table")
+        self._display_run_table_btn.clicked.connect(self._display_run_table)
+        self._display_value_added_btn = QPushButton("Show value added table")
+        self._display_value_added_btn.clicked.connect(self._display_value_added_table)
+
 
         self.buttons_hbox = QHBoxLayout()
         self.buttons_hbox.addWidget(self._run_btn)
-        self.buttons_hbox.addWidget(self._display_table_btn)
-        self.buttons_hbox.addWidget(self._display_summary_plot_btn)
-        self.buttons_hbox.addWidget(self._display_parameter_plots_btn)
+        self.buttons_hbox.addWidget(self._display_run_table_btn)
+        self.buttons_hbox.addWidget(self._display_value_added_btn)
         self._enable_display_buttons(False)
         # layout for the whole tab
         self._layout = QGridLayout()
@@ -233,30 +240,11 @@ class FeatureAnalysisTab(QWidget):
             self._grid_gb.setEnabled(True)
 
     def _enable_display_buttons(self, a):
+        if self._feat_unc_df is None:
+            return
         for i in range(1, self.buttons_hbox.count()):
             widget = self.buttons_hbox.itemAt(i).widget()
             widget.setEnabled(a)
-
-    def _display_summary_plot(self):
-        if not self._grid:
-            return
-        graph = self._ml_plotter.plot_grid_results_summary_graph(self._grid)
-        self.request_plot_generation.emit(graph, "summary plot")
-        return
-
-    def _display_parameter_plots(self):
-        if not self._grid:
-            return
-        graph2 = self._ml_plotter.plot_grid_results_graph(self._grid)
-        self.request_plot_generation.emit(graph2, "parameter plot")
-        return
-
-    def _display_table(self):
-        if not self._grid:
-            return
-        tbl = self._ml_plotter.plot_grid_results_table(self._grid)
-        self.request_plot_generation.emit(tbl, "grid results")
-        return
 
     def _validate_features(self):
         feature_columns = []
@@ -331,6 +319,15 @@ class FeatureAnalysisTab(QWidget):
         return parameters
 
     def _run(self):
+        self._feature_run_list = None
+        self._target_column = None
+        self._test_ratio = None
+        self._scalers = None
+        self._parameters = None
+        self._categorical = None
+        self._base_columns = None
+        self._secondary_columns = None
+
         # check columns
         # note: it is ok for base feature to be empty
         # intended use is for feature2 to NOT be empty so you can uncertainty analysis
@@ -387,17 +384,42 @@ class FeatureAnalysisTab(QWidget):
         if self._button_group.checkedId() == 0 or self._button_group.checkedId() == 1:
             scalers, parameters = self._get_parameters_from_run(row)
 
-        df = self._ml_expert.feature_uncertainty_loop(feature_run_list, target_column, test_ratio, scalers, parameters, categorical)
+        df = self._ml_expert.feature_uncertainty_loop(
+            feature_run_list, target_column, test_ratio, scalers, parameters, categorical)
+
+        self._feature_run_list = feature_run_list
+        self._target_column = target_column
+        self._test_ratio = test_ratio
+        self._scalers = scalers
+        self._parameters = parameters
+        self._categorical = categorical
+        self._base_columns = base_columns
+        self._secondary_columns = secondary_columns
+
 
         # update self
-        self._feat_unc_df = df
+        self._feat_unc_df = df # may be empty if uncertainty loop failed
+        self._enable_display_buttons(True)
         # generate results
-        window = self._ml_plotter.plot_feat_unc_table(self._feat_unc_df, scalers[0], parameters, base_columns, secondary_columns)
-        self.request_plot_generation.emit(window, "Feature Uncertainty Analysis Table")
+        self._display_run_table()
 
-        val_added_dict = self._ml_expert.compute_added_value(self._feat_unc_df, secondary_columns, feature_run_list)
+        self._display_value_added_table()
+
+    def _display_value_added_table(self):
+        if self._feat_unc_df is None:
+            return
+        val_added_dict = self._ml_expert.compute_added_value(
+            self._feat_unc_df, self._secondary_columns, self._feature_run_list)
         table = self._ml_plotter.value_added_table(pd.DataFrame(val_added_dict))
         self.request_plot_generation.emit(table, "Value Added Table")
+
+    def _display_run_table(self):
+        if self._feat_unc_df is None:
+            return
+        window = self._ml_plotter.plot_feat_unc_table(
+            self._feat_unc_df, self._scalers[0], self._parameters, self._base_columns, self._secondary_columns)
+        self.request_plot_generation.emit(window, "Feature Uncertainty Analysis Table")
+        return
 
     def _validate_run_no(self, run_no):
         if self._df is None:
@@ -483,8 +505,8 @@ class FeatureAnalysisTab(QWidget):
 
         self._data_target_combo.addItem("")
         self._data_target_combo.setCurrentIndex(0)
-        self._data_feature_list.addItems(self._ds_columns)
-        self._data_feature2_list.addItems(self._ds_columns)
+        self._data_feature_list.addItems(self._ds.numerical_columns)
+        self._data_feature2_list.addItems(self._ds.numerical_columns)
 
     def update_upon_closing_dataset(self):
         self.setDisabled(True)
