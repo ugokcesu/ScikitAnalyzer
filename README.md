@@ -15,6 +15,8 @@ Check out <a href="https://youtu.be/nH0ePeOrICI"> this youtube video</a> for a s
 
 # Screenshots
 <img src="Screen Shot 1.png"> </img>
+<img src="ML gridsearch.png"> </img>
+<img src="xplot screenshot.png"> </img>
 
 
 # Running the Code / Installation Notes 
