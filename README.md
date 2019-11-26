@@ -6,10 +6,16 @@ Check out <a href="https://youtu.be/nH0ePeOrICI"> this youtube video</a> for a s
 <ul> 
   <li>Run info statistics</li>
   <li>Compute multiple histograms colored by categories</li>
-  <li>Compute <b>Histogram Dispersion</b> as a way of understanding how linearly separable your target values are for each feature</li>
+  <li>Compute <b>Histogram Dispersion</b> as a way of understanding how linearly separable your target values are for each 
+  <li>Create cross plots and 2D histograms</li>
+  <li>Easily run ML algorithms with varying parameters and features to find optimal parameters and features with highest      impact </li>
+</ul>
+  
+  
 
 # Screenshots
 <img src="Screen Shot 1.png"> </img>
+
 
 # Running the Code / Installation Notes 
 
