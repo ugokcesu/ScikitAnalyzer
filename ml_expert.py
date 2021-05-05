@@ -64,8 +64,8 @@ class MLExpert:
 
         combined_parameters = self.combine_parameters(scalers, parameters)
 
-        grid = GridSearchCV(pipeline, combined_parameters, n_jobs=-2, return_train_score=True, cv=cv,
-                            iid=False, error_score='raise')
+        grid = GridSearchCV(pipeline, combined_parameters, return_train_score=True, cv=cv,
+                             error_score='raise')
         # parameters validated, but still scikit may throw an exception
         try:
             grid.fit(X_train, y_train)
@@ -90,8 +90,8 @@ class MLExpert:
         y_train = self._ds.df[target_column]
         pipeline = self.assemble_pipeline('DummyScaler', 'DummyEstimator')
         combined_parameters = self.combine_parameters(scalers, parameters)
-        grid = GridSearchCV(pipeline, combined_parameters, n_jobs=-2, return_train_score=True, cv=cv,
-                            iid=False, error_score='raise')
+        grid = GridSearchCV(pipeline, combined_parameters,  return_train_score=True, cv=cv,
+                             error_score='raise')
 
         # start looping through feature_columns
         df_list = []

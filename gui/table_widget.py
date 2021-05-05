@@ -39,15 +39,15 @@ class TableWidget(QFrame):
 
         self._description_cb.toggled.connect(self.checkbox_clicked)
         self._table_cb.clicked.connect(self.checkbox_clicked)
-        self.initialize_with_dataset(ds)
+        self.initialize_with_dataset(ds, name)
 
         self.setFrameShape(QFrame.Box)
 
-    def initialize_with_dataset(self, ds):
+    def initialize_with_dataset(self, ds, name):
         self._description.setText(ds.description())
         model = dataset_model.DatasetModel(data=ds)
         self._data_table.setModel(model)
-        self.setWindowTitle(ds.name)
+        self.setWindowTitle(name)
         self._description_cb.setChecked(True)
         self._table_cb.setChecked(True)
 

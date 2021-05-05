@@ -19,7 +19,7 @@ class LeftDockMLTab(QWidget):
         super().__init__(parent)
 
         self.setObjectName("MLTab")
-        self.setWindowTitle("Machine Learning")
+        self.setWindowTitle("Data Modeling")
 
         self._tab_widget = QTabWidget()
         # self._tab_widget.setTabPosition(QTabWidget.West)

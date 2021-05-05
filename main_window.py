@@ -65,7 +65,7 @@ class MainWindow(QMainWindow):
         self.tile_action.triggered.connect(self.mdi_area.tileSubWindows)
         self.cascade_action = QAction(QIcon("icons/cascade"), "Cascade Windows")
         self.cascade_action.triggered.connect(self.mdi_area.cascadeSubWindows)
-        self.open_table_action = QAction("Open Table Window")
+        self.open_table_action = QAction("Open Info Window")
         self.open_table_action.triggered.connect(self.re_open_table_window)
         self.close_all_action = QAction("Close All")
         self.close_all_action.triggered.connect(self.close_all)
@@ -121,7 +121,7 @@ class MainWindow(QMainWindow):
                 self._current_dataset_name = dataset_name
                 self.dataset_dictionary[dataset_name] = ds
                 self.current_ds = ds
-                self.table_sub_window = MdiSubWindow(self.dataset_dictionary[dataset_name], dataset_name, self)
+                self.table_sub_window = MdiSubWindow(self.dataset_dictionary[dataset_name], "Info window for " + dataset_name, self)
                 self.table_sub_window.setWindowFlags(Qt.CustomizeWindowHint | Qt.WindowTitleHint | Qt.Tool)
                 self.mdi_area.addSubWindow(self.table_sub_window)
                 self.table_sub_window.show()

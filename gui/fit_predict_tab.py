@@ -90,7 +90,7 @@ class FitPredictTab(QWidget):
                                     self._estimator_widgets[MLWidgets.SV.name].windowTitle())
         self._grid_layout.addWidget(self._estimator_tabs, 2, 0, 1, 2)
 
-        #p arameters
+        #parameters
         self._param_split_lb = QLabel("Test/Train Split Ratio")
         self._param_split_sp = QDoubleSpinBox()
         #TODO: think about use of this, either remove or use
@@ -143,21 +143,21 @@ class FitPredictTab(QWidget):
         if not self._grid:
             return
         graph = self._ml_plotter.plot_grid_results_summary_graph(self._grid)
-        self.request_plot_generation.emit(graph, "summary plot")
+        self.request_plot_generation.emit(graph, "Summary Plot")
         return
 
     def _display_parameter_plots(self):
         if not self._grid:
             return
         graph2 = self._ml_plotter.plot_grid_results_graph(self._grid)
-        self.request_plot_generation.emit(graph2, "parameter plot")
+        self.request_plot_generation.emit(graph2, "Parameter Analysis Plot")
         return
 
     def _display_table(self):
         if not self._grid:
             return
         tbl = self._ml_plotter.plot_grid_results_table(self._grid)
-        self.request_plot_generation.emit(tbl, "grid results")
+        self.request_plot_generation.emit(tbl, "Modeling Results Table")
         return
 
     def _validate_features(self):

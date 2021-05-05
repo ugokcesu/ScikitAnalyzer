@@ -27,6 +27,10 @@ class MLPlotter:
 
         # filter some columns
         df = df.loc[:, ~(df.columns.str.contains("time|split"))]
+        newNames = []
+        for col in df.columns:
+            newNames.append(col.replace("param_Dummy",""))
+        df.columns = newNames
         model = DatasetModel(dataFrame=df)
         grid_results = QTableView()
         grid_results.setAlternatingRowColors(True)
@@ -103,6 +107,7 @@ class MLPlotter:
         df['estimator_cat'] = pd.Categorical(df['estimator'])
         df['scaler'] = df['param_DummyScaler'].astype(str).apply(lambda x: x.split('(')[0])
 
+       
         best_params = cls._extract_best_param_per_estimator(df)
         container_widget = QWidget()
         layout = QGridLayout()
@@ -118,18 +123,19 @@ class MLPlotter:
                     continue
                 i += 1
                 mask = cls._create_bool_mask(df, col, best_params[estimator])
+
                 ax = plot_window.figure.add_subplot(len(best_params[estimator])-1, 1, i)
                 ax.plot(df[mask][col], df[mask].mean_test_score, label=col.split('__')[1]+'_test', linestyle='-',
                         marker='.', color='red', linewidth=1)
                 ax.plot(df[mask][col], df[mask].mean_train_score, label=col.split('__')[1]+'_train',  linestyle='--',
                         marker='.', color='blue', linewidth=1)
                 ax.legend(loc='best')
-                ax.set_xlabel(col)
+                ax.set_xlabel(col.replace("param_Dummy",""))
                 ax.set_ylabel('mean test score')
                 plt.tight_layout(True, rect=(0.06, 0.06, 0.98, 0.98))
             layout.addWidget(plot_window, counter, 0)
             best_param_lb = QLabel("Best Params for " + estimator + ":\n" +
-                                   str(best_params[estimator]).replace(',', '\n').strip('{|}'))
+                                   str(best_params[estimator]).replace(',', '\n').replace('param_Dummy', "").strip('{|}'))
             layout.addWidget(best_param_lb, counter, 1)
             counter +=1
         layout.addItem(QSpacerItem(1, 1), counter, 0, 1, 2)
